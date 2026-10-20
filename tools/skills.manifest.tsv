@@ -1,0 +1,126 @@
+# Mobile engineering skill manifest
+#
+# Format (tab-separated): category, installed-name, source-repo, path-in-repo, upstream-name
+#
+#   installed-name  directory created at skills/<installed-name>/
+#   source-repo     key into the repository table in tools/install-skills.sh
+#   path-in-repo    directory copied out of that repository (copied verbatim except .git)
+#   upstream-name   original frontmatter name: rewritten to installed-name when different
+#
+# Nothing from these repositories is executed during install. Files are only cloned and copied.
+# Exact commits are recorded in tools/skills.lock by the installer.
+Design & UX	frontend-design	anthropics	skills/frontend-design	
+Design & UX	expo-design-system	expo	plugins/expo/skills/expo-design-system	
+Design & UX	expo-native-ui	expo	plugins/expo/skills/expo-native-ui	
+Design & UX	expo-ui	expo	plugins/expo/skills/expo-ui	
+Design & UX	ios-typography	apple	skills/design/typography	typography
+Design & UX	ios-animation-patterns	apple	skills/design/animation-patterns	animation-patterns
+Design & UX	ios-sf-symbols	apple	skills/design/sf-symbols	sf-symbols
+Design & UX	flutter-build-responsive-layout	flutter	skills/flutter-build-responsive-layout	
+Design & UX	flutter-fix-layout-issues	flutter	skills/flutter-fix-layout-issues	
+Design & UX	flutter-add-widget-preview	flutter	skills/flutter-add-widget-preview	
+Design & UX	android-accessibility	android-awesome	.github/skills/ui/android-accessibility	
+React Native & Expo	vercel-react-native-skills	vercel	skills/react-native-skills	
+React Native & Expo	vercel-composition-patterns	vercel	skills/composition-patterns	
+React Native & Expo	expo-overview	expo	plugins/expo/skills/expo-overview	
+React Native & Expo	expo-project-structure	expo	plugins/expo/skills/expo-project-structure	
+React Native & Expo	expo-router	expo	plugins/expo/skills/expo-router	
+React Native & Expo	expo-animation	expo	plugins/expo/skills/expo-animation	
+React Native & Expo	expo-data-fetching	expo	plugins/expo/skills/expo-data-fetching	
+React Native & Expo	expo-module	expo	plugins/expo/skills/expo-module	
+React Native & Expo	expo-dev-client	expo	plugins/expo/skills/expo-dev-client	
+React Native & Expo	expo-upgrade	expo	plugins/expo/skills/expo-upgrade	
+React Native & Expo	expo-brownfield	expo	plugins/expo/skills/expo-brownfield	
+React Native & Expo	expo-app-clip	expo	plugins/expo/skills/expo-app-clip	
+React Native & Expo	eas-app-stores	expo	plugins/expo/skills/eas-app-stores	
+React Native & Expo	eas-workflows	expo	plugins/expo/skills/eas-workflows	
+React Native & Expo	eas-update	expo	plugins/expo/skills/eas-update	
+React Native & Expo	eas-simulator	expo	plugins/expo/skills/eas-simulator	
+React Native & Expo	eas-observe	expo	plugins/expo/skills/eas-observe	
+Flutter & Dart	flutter-apply-architecture-best-practices	flutter	skills/flutter-apply-architecture-best-practices	
+Flutter & Dart	flutter-setup-declarative-routing	flutter	skills/flutter-setup-declarative-routing	
+Flutter & Dart	flutter-setup-localization	flutter	skills/flutter-setup-localization	
+Flutter & Dart	flutter-implement-json-serialization	flutter	skills/flutter-implement-json-serialization	
+Flutter & Dart	flutter-use-http-package	flutter	skills/flutter-use-http-package	
+Flutter & Dart	flutter-add-widget-test	flutter	skills/flutter-add-widget-test	
+Flutter & Dart	flutter-add-integration-test	flutter	skills/flutter-add-integration-test	
+Flutter & Dart	dart-add-unit-test	dart	skills/dart-add-unit-test	
+Flutter & Dart	dart-collect-coverage	dart	skills/dart-collect-coverage	
+Flutter & Dart	dart-generate-test-mocks	dart	skills/dart-generate-test-mocks	
+Flutter & Dart	dart-run-static-analysis	dart	skills/dart-run-static-analysis	
+Flutter & Dart	dart-resolve-package-conflicts	dart	skills/dart-resolve-package-conflicts	
+Flutter & Dart	dart-fix-runtime-errors	dart	skills/dart-fix-runtime-errors	
+Flutter & Dart	dart-use-pattern-matching	dart	skills/dart-use-pattern-matching	
+Flutter & Dart	dart-use-primary-constructors	dart	skills/dart-use-primary-constructors	
+Flutter & Dart	dart-write-documentation	dart	skills/dart-write-documentation	
+Flutter & Dart	dart-migrate-to-checks-package	dart	skills/dart-migrate-to-checks-package	
+Flutter & Dart	dart-setup-ffi-assets	dart	skills/dart-setup-ffi-assets	
+Flutter & Dart	dart-use-ffigen	dart	skills/dart-use-ffigen	
+Android & Kotlin	compose-animations	chrisbanes	skills/compose-animations	
+Android & Kotlin	compose-component-design	chrisbanes	skills/compose-component-design	
+Android & Kotlin	compose-focus-navigation	chrisbanes	skills/compose-focus-navigation	
+Android & Kotlin	compose-performance	chrisbanes	skills/compose-performance	
+Android & Kotlin	compose-state-and-effects	chrisbanes	skills/compose-state-and-effects	
+Android & Kotlin	compose-ui-testing-patterns	chrisbanes	skills/compose-ui-testing-patterns	
+Android & Kotlin	kotlin-api-design	chrisbanes	skills/kotlin-api-design	
+Android & Kotlin	kotlin-concurrency-and-flow	chrisbanes	skills/kotlin-concurrency-and-flow	
+Android & Kotlin	gradle-run	chrisbanes	skills/gradle-run	
+Android & Kotlin	android-benchmark-comparison	chrisbanes	skills/android-benchmark-comparison	
+Android & Kotlin	android-architecture	android-awesome	.github/skills/architecture/android-architecture	
+Android & Kotlin	android-data-layer	android-awesome	.github/skills/architecture/android-data-layer	
+Android & Kotlin	android-viewmodel	android-awesome	.github/skills/architecture/android-viewmodel	
+Android & Kotlin	android-gradle-logic	android-awesome	.github/skills/build_and_tooling/android-gradle-logic	
+Android & Kotlin	android-retrofit	android-awesome	.github/skills/concurrency_and_networking/android-retrofit	
+Android & Kotlin	gradle-build-performance	android-awesome	.github/skills/performance/gradle-build-performance	
+Android & Kotlin	android-testing	android-awesome	.github/skills/testing_and_automation/android-testing	
+Android & Kotlin	android-emulator-skill	android-awesome	.github/skills/testing_and_automation/android-emulator-skill	
+Android & Kotlin	compose-navigation3	android-awesome	.github/skills/ui/compose-navigation	navigation3
+Android & Kotlin	coil-compose	android-awesome	.github/skills/ui/coil-compose	
+Android & Kotlin	kotlin-stable	partme-kotlin	skills/kotlin-stable	
+Android & Kotlin	kotlin-gradle-build	partme-kotlin	skills/kotlin-gradle-build	
+Android & Kotlin	kotlin-testing	partme-kotlin	skills/kotlin-testing	
+iOS & Swift	swiftui-pro	twostraws	swiftui-pro/skills/swiftui-pro	
+iOS & Swift	swift-stable	partme-swift	skills/swift-stable	
+iOS & Swift	swift-concurrency	partme-swift	skills/swift-concurrency	
+iOS & Swift	swift-package-manager	partme-swift	skills/swift-package-manager	
+iOS & Swift	swift-testing	partme-swift	skills/swift-testing	
+iOS & Swift	ios-coding-best-practices	apple	skills/ios/coding-best-practices	coding-best-practices
+iOS & Swift	ios-navigation-patterns	apple	skills/ios/navigation-patterns	navigation-patterns
+iOS & Swift	ios-run-simulator	apple	skills/ios/run-simulator	run-simulator
+iOS & Swift	ios-auth-flow	apple	skills/generators/auth-flow	auth-flow
+iOS & Swift	ios-persistence-setup	apple	skills/generators/persistence-setup	persistence-setup
+iOS & Swift	ios-offline-queue	apple	skills/generators/offline-queue	offline-queue
+iOS & Swift	ios-http-cache	apple	skills/generators/http-cache	http-cache
+iOS & Swift	ios-permission-priming	apple	skills/generators/permission-priming	permission-priming
+iOS & Swift	ios-push-notifications	apple	skills/generators/push-notifications	push-notifications
+iOS & Swift	ios-background-processing	apple	skills/generators/background-processing	background-processing
+iOS & Swift	ios-privacy-manifests	apple	skills/security/privacy-manifests	privacy-manifests
+iOS & Swift	ios-performance-profiling	apple	skills/performance/profiling	performance-profiling
+iOS & Swift	ios-snapshot-test-setup	apple	skills/testing/snapshot-test-setup	snapshot-test-setup
+iOS & Swift	ios-app-store-rejection-handler	apple	skills/app-store/rejection-handler	rejection-handler
+iOS & Swift	ios-beta-testing	apple	skills/product/beta-testing	beta-testing
+TypeScript	typescript-style-guide	ts	skills/typescript-style-guide	
+TypeScript	typescript-types	ts	skills/typescript-types	
+TypeScript	typescript-discriminated-unions	ts	skills/typescript-discriminated-unions	
+TypeScript	typescript-functions	ts	skills/typescript-functions	
+TypeScript	typescript-naming	ts	skills/typescript-naming	
+TypeScript	typescript-variables	ts	skills/typescript-variables	
+TypeScript	typescript-react	ts	skills/typescript-react	
+TypeScript	typescript-source-organization	ts	skills/typescript-source-organization	
+TypeScript	typescript-tests	ts	skills/typescript-tests	
+Architecture & Quality	api-and-interface-design	addy	skills/api-and-interface-design	
+Architecture & Quality	code-review-and-quality	addy	skills/code-review-and-quality	
+Architecture & Quality	code-simplification	addy	skills/code-simplification	
+Architecture & Quality	frontend-ui-engineering	addy	skills/frontend-ui-engineering	
+Architecture & Quality	planning-and-task-breakdown	addy	skills/planning-and-task-breakdown	
+Architecture & Quality	incremental-implementation	addy	skills/incremental-implementation	
+Architecture & Quality	deprecation-and-migration	addy	skills/deprecation-and-migration	
+Architecture & Quality	documentation-and-adrs	addy	skills/documentation-and-adrs	
+Testing & Debugging	debugging-and-error-recovery	addy	skills/debugging-and-error-recovery	
+Testing & Debugging	test-driven-development	addy	skills/test-driven-development	
+Performance	performance-optimization	addy	skills/performance-optimization	
+Networking, Data & Security	security-and-hardening	addy	skills/security-and-hardening	
+Networking, Data & Security	observability-and-instrumentation	addy	skills/observability-and-instrumentation	
+Delivery & CI/CD	ci-cd-and-automation	addy	skills/ci-cd-and-automation	
+Delivery & CI/CD	git-workflow-and-versioning	addy	skills/git-workflow-and-versioning	
+Delivery & CI/CD	shipping-and-launch	addy	skills/shipping-and-launch	
