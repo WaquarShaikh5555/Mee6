@@ -13,18 +13,19 @@
  */
 
 import { storage } from '@/lib/storage';
+import { clearSession, readSession, writeSession } from './sessionStore';
 import {
   AuthError,
   type AuthService,
   type AuthUser,
   type Session,
+  type ResetPasswordInput,
   type SignInInput,
   type SignUpInput,
 } from './types';
 import { validateDisplayName, validateEmail, validatePassword } from './validation';
 
 const ACCOUNTS_KEY = 'shaikhs.demo.accounts.v1';
-const SESSION_KEY = 'shaikhs.session.v1';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type StoredAccount = AuthUser;
@@ -59,8 +60,7 @@ function toSession(user: AuthUser): Session {
 }
 
 async function persistSession(session: Session): Promise<Session> {
-  await storage.set(SESSION_KEY, JSON.stringify(session));
-  return session;
+  return writeSession(session);
 }
 
 /** A believable network delay, so loading states get exercised in development. */
@@ -115,24 +115,11 @@ export const demoAuthService: AuthService = {
   },
 
   async signOut(): Promise<void> {
-    await storage.remove(SESSION_KEY);
+    await clearSession();
   },
 
   async restore(): Promise<Session | null> {
-    const raw = await storage.get(SESSION_KEY);
-    if (!raw) return null;
-    try {
-      const session = JSON.parse(raw) as Session;
-      if (!session?.token || !session.user?.email) return null;
-      if (new Date(session.expiresAt).getTime() <= Date.now()) {
-        await storage.remove(SESSION_KEY);
-        return null;
-      }
-      return session;
-    } catch {
-      await storage.remove(SESSION_KEY);
-      return null;
-    }
+    return readSession();
   },
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -141,6 +128,11 @@ export const demoAuthService: AuthService = {
     }
     // Always resolves: revealing whether an address exists enables account enumeration.
     await settle(undefined, 600);
+  },
+
+  async resetPassword(_input: ResetPasswordInput): Promise<void> {
+    // There is no token store offline, so a link cannot be honoured here.
+    throw new AuthError('invalid-token', 'Reset links only work with the connected server.');
   },
 };
 

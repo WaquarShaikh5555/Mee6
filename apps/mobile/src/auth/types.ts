@@ -32,11 +32,18 @@ export type SignInInput = {
   password: string;
 };
 
+export type ResetPasswordInput = {
+  /** Token taken from the link in the reset email. */
+  token: string;
+  password: string;
+};
+
 export type AuthErrorCode =
   | 'invalid-credentials'
   | 'email-in-use'
   | 'weak-password'
   | 'invalid-email'
+  | 'invalid-token'
   | 'network'
   | 'unknown';
 
@@ -59,4 +66,6 @@ export interface AuthService {
   restore(): Promise<Session | null>;
   /** Always resolves, whether or not the address exists (no account enumeration). */
   requestPasswordReset(email: string): Promise<void>;
+  /** Consumes a reset token and sets a new password. Revokes every existing session. */
+  resetPassword(input: ResetPasswordInput): Promise<void>;
 }

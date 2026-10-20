@@ -2,13 +2,15 @@
 
 A cross-platform app for iOS and Android, built with Expo (React Native) and TypeScript.
 
-**Current state: Step 1 complete.** Design foundation, navigation, and authentication are in
-place and verified. Features come next.
+**Current state: Step 1 complete, backend integration in progress.** Design foundation,
+navigation, and authentication are in place and verified; the app talks to the real API in
+`apps/api` when `EXPO_PUBLIC_API_URL` is set. Features come next.
 
 - **Stack:** Expo SDK 58 · React Native 0.88 · React 19 · TypeScript 6 (strict) · Expo Router
 - **Runs on:** iOS, Android, and web from one codebase
-- **Tests:** 71 passing (design system, auth contracts, screen rendering)
-- **Accounts:** local preview service (`demoAuthService`), swappable for a real provider
+- **Tests:** 92 passing (design system, auth contracts, HTTP client, screen rendering)
+- **Accounts:** the Shaikh's API when `EXPO_PUBLIC_API_URL` is set, otherwise the on-device
+  preview service
 
 ## Run it
 
@@ -97,30 +99,48 @@ has one owner; every interactive element has an accessibility label and a state;
 
 ## Authentication
 
-The app talks to an `AuthService` interface, never to a vendor SDK. Swapping providers is one line
-in `src/auth/AuthProvider.tsx`.
+The app talks to an `AuthService` interface, never to a vendor SDK. Which implementation it uses
+is one line in `src/auth/AuthProvider.tsx`:
 
-Implemented and tested today:
+```ts
+const service: AuthService = isApiConfigured() ? httpAuthService : demoAuthService;
+```
 
-- Sign up with validation, duplicate-email detection, and a password strength meter
-- Sign in, with a single generic error for unknown accounts
-- Password reset that always reports success (no account enumeration)
-- Session persistence in the iOS Keychain / Android Keystore via `expo-secure-store`
-- Expiry handling: an expired or corrupt session resolves to signed-out and is cleared
-- Route guards on both route groups, so deep links cannot bypass auth
-- Sign out that clears the session but keeps the account
+`isApiConfigured()` is true when `EXPO_PUBLIC_API_URL` is set at build time:
 
-**The demo service does not verify passwords.** It stores accounts on the device. It exists so the
-whole flow could be built and tested before choosing an identity provider.
+```bash
+# apps/mobile/.env
+EXPO_PUBLIC_API_URL=http://192.168.1.20:8082      # phone on the same Wi-Fi as your laptop
+# EXPO_PUBLIC_API_URL=https://<app>.azurecontainerapps.io   # deployed backend
+```
 
-### Connecting a real provider
+Restart the dev server after changing it (`npx expo start -c` clears the cache).
 
-1. Create `src/auth/<provider>AuthService.ts` implementing `AuthService`.
-2. Set `const service: AuthService = <provider>AuthService` in `AuthProvider.tsx`.
-3. Add the provider's config to `app.json` and its keys to CI secrets — never to the repo.
+### With the real API (`httpAuthService`)
 
-Candidates: **Microsoft Entra External ID** (fits your Azure account, handles MFA and social
-sign-in), Supabase, or Firebase. All three satisfy the contract unchanged.
+- Passwords are hashed with argon2id on the server; the app never stores one.
+- The session token is opaque (256 bits), stored in the iOS Keychain / Android Keystore, and
+  revoked server-side on sign-out.
+- `restore()` revalidates the stored token against `GET /v1/auth/session`, refreshes the expiry,
+  and clears the token when it has been revoked. If the device is offline it keeps the last
+  known session rather than signing the person out.
+- Server error codes map onto the app's `AuthError` codes, so screens show the same copy either
+  way.
+- Password reset sends a real email through Azure Communication Services and the link opens
+  `shaikhs://reset-password?token=…`.
+
+### Without it (`demoAuthService`)
+
+The local preview service stores accounts on the device and **does not verify passwords**. It
+exists so the flow still works for anyone who has not started the backend. The Welcome screen
+labels it "Preview build" and the demo button only appears in that mode.
+
+### Tests
+
+`__tests__/httpAuthService.test.ts` stubs `fetch` and asserts exactly what crosses the wire:
+paths, bodies, bearer tokens, error-code mapping, and what happens to the stored session on
+every branch (revoked, offline, expired). `__tests__/auth.test.ts` covers the demo service and
+shared validation rules; `__tests__/screens.test.tsx` renders every screen.
 
 ## Platform notes
 
@@ -134,7 +154,9 @@ sign-in), Supabase, or Firebase. All three satisfy the contract unchanged.
 ## What is not done yet
 
 - Features — deliberately deferred; you define them.
-- A real identity provider (see above).
+- A deployed backend. The API and its Azure infrastructure are built
+  ([docs/BACKEND.md](../../docs/BACKEND.md)); deployment needs an Azure subscription.
+- Email verification and MFA — additive to the existing endpoints.
 - Push notifications, offline sync, analytics — all require infrastructure choices.
 - Native builds: this sandbox has no Android SDK or Xcode, so no APK/AAB/IPA has been produced.
   `npx expo start` and the web preview are the verified targets so far.

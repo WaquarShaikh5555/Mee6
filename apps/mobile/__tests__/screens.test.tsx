@@ -25,6 +25,8 @@ jest.mock('@/lib/storage', () => ({
   },
 }));
 
+const mockParams: Record<string, string> = {};
+
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
@@ -47,6 +49,8 @@ jest.mock('expo-router', () => {
       back: mockBack,
       canGoBack: () => true,
     }),
+    // Reset-password reads its token from the deep link; tests set this object.
+    useLocalSearchParams: () => mockParams,
   };
 });
 
@@ -62,6 +66,7 @@ import DesignScreen from '@/app/(app)/design';
 import HomeScreen from '@/app/(app)/index';
 import SettingsScreen from '@/app/(app)/settings';
 import ForgotPasswordScreen from '@/app/(auth)/forgot-password';
+import ResetPasswordScreen from '@/app/(auth)/reset-password';
 import SignInScreen from '@/app/(auth)/sign-in';
 import SignUpScreen from '@/app/(auth)/sign-up';
 import WelcomeScreen from '@/app/(auth)/welcome';
@@ -95,6 +100,7 @@ beforeEach(() => {
     confirm?.onPress?.();
   });
   mockStorage.clear();
+  delete mockParams.token;
 });
 
 describe('auth screens', () => {
@@ -173,6 +179,34 @@ describe('auth screens', () => {
       await screen.findByText('Check your inbox', undefined, { timeout: 3000 }),
     ).toBeTruthy();
     expect(screen.getByText(/Preview build: no email is actually sent yet/)).toBeTruthy();
+  });
+
+  it('reset-password explains an incomplete link instead of failing silently', async () => {
+    await renderScreen(<ResetPasswordScreen />);
+
+    expect(await screen.findByText('This link is incomplete')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Request a new link' }));
+    expect(mockReplace).toHaveBeenCalledWith('/forgot-password');
+  });
+
+  it('reset-password checks confirmation, then reports the demo limitation', async () => {
+    mockParams.token = 'demo-token';
+    await renderScreen(<ResetPasswordScreen />);
+
+    await fireEvent.changeText(await screen.findByPlaceholderText('At least 8 characters'), 'newpass123');
+    await fireEvent.changeText(screen.getByPlaceholderText('Type it again'), 'different123');
+    await fireEvent.press(screen.getByRole('button', { name: 'Set new password' }));
+
+    expect(await screen.findByText('Those passwords do not match.')).toBeTruthy();
+
+    await fireEvent.changeText(screen.getByPlaceholderText('Type it again'), 'newpass123');
+    await fireEvent.press(screen.getByRole('button', { name: 'Set new password' }));
+
+    expect(
+      await screen.findByText('Reset links only work with the connected server.', undefined, {
+        timeout: 3000,
+      }),
+    ).toBeTruthy();
   });
 });
 

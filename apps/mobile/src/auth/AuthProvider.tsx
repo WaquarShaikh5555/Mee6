@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { demoAuthService, signInWithDemoAccount } from './demoAuthService';
+import { httpAuthService, isApiConfigured } from './httpAuthService';
 import {
   AuthError,
   type AuthService,
@@ -18,10 +19,12 @@ import {
 } from './types';
 
 /**
- * The single seam between the app and the identity provider. Change this line
- * to swap providers; nothing else in the app refers to a concrete service.
+ * The single seam between the app and the identity provider.
+ *
+ * Set `EXPO_PUBLIC_API_URL` (see .env.example) to use the real backend; without
+ * it the app runs against the on-device demo service so screens stay usable.
  */
-const service: AuthService = demoAuthService;
+const service: AuthService = isApiConfigured() ? httpAuthService : demoAuthService;
 
 export type AuthStatus = 'restoring' | 'signedOut' | 'signedIn';
 
@@ -38,6 +41,8 @@ type AuthContextValue = {
   signInDemo: () => Promise<boolean>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<boolean>;
+  /** Returns false when the token is invalid/expired or the password is rejected. */
+  resetPassword: (token: string, password: string) => Promise<boolean>;
   clearError: () => void;
 };
 
@@ -97,7 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (input: SignUpInput) => run(() => service.signUp(input)),
     [run],
   );
-  const signInDemo = useCallback(() => run(() => signInWithDemoAccount()), [run]);
+  const signInDemo = useCallback(async () => {
+    // Only meaningful offline; in API mode this would mint a local session the
+    // server knows nothing about.
+    if (service !== demoAuthService) return false;
+    return run(() => signInWithDemoAccount());
+  }, [run]);
 
   const signOut = useCallback(async () => {
     setIsSubmitting(true);
@@ -127,6 +137,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await service.resetPassword({ token, password });
+      // Every session was revoked server-side; mirror that locally.
+      setSession(null);
+      setStatus('signedOut');
+      return true;
+    } catch (caught) {
+      setError(
+        caught instanceof AuthError
+          ? caught.message
+          : 'Could not reset the password. The link may have expired.',
+      );
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
+
   const clearError = useCallback(() => setError(null), []);
 
   const value = useMemo<AuthContextValue>(
@@ -142,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInDemo,
       signOut,
       requestPasswordReset,
+      resetPassword,
       clearError,
     }),
     [
@@ -154,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInDemo,
       signOut,
       requestPasswordReset,
+      resetPassword,
       clearError,
     ],
   );
