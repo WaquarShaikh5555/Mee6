@@ -126,6 +126,21 @@ done
 
 if [[ -n "$HEALTH" ]]; then
   echo "$HEALTH"
+  # GitHub Actions renders this block on the run's summary page, so the URL is
+  # visible after a one-tap deploy without digging through the log.
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    {
+      echo "## Shaikh's API deployed"
+      echo
+      echo "| | |"
+      echo "| --- | --- |"
+      echo "| **API URL** | \`$API_URL\` |"
+      echo "| Resource group | \`$RESOURCE_GROUP\` |"
+      echo "| Image | \`$TAG\` |"
+      echo
+      echo "Point the app at it: \`EXPO_PUBLIC_API_URL=$API_URL\`"
+    } >> "$GITHUB_STEP_SUMMARY"
+  fi
 else
   echo "The API did not answer within four minutes. Inspect the logs with:"
   echo "  az containerapp logs show -g $RESOURCE_GROUP -n $APP_NAME --tail 100"

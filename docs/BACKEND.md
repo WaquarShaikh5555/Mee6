@@ -147,6 +147,9 @@ prices for your region in the Azure pricing calculator before committing.
    Administrator** so the script can grant the app's identity permission to pull its
    image. The Owner role includes both.
 
+No computer? Skip to [Deploying from a phone](#deploying-from-a-phone-no-pc-required) —
+the prerequisites above are handled for you inside Azure Cloud Shell.
+
 Docker is *not* required — the image is built by Azure Container Registry.
 
 ### One command
@@ -182,6 +185,85 @@ At the end it prints:
 ```
 API URL: https://shaikhs-api-xxxxxxxx.<region>.azurecontainerapps.io
 ```
+
+### Deploying from a phone (no PC required)
+
+You do not need a computer, and you do not need to send anyone a password.
+**Azure Cloud Shell** is a terminal that runs inside Azure, already signed in to your
+subscription, with `az`, `git` and `openssl` installed. It works in a mobile browser.
+
+**Open it:** the Azure mobile app (iOS/Android) → **Cloud Shell** (the `>_` icon), or
+[portal.azure.com](https://portal.azure.com) in Chrome/Safari → the `>_` icon in the top bar.
+The first time it asks to create storage — tap **Create**.
+
+Then paste this entire block and press enter:
+
+```bash
+git clone -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git shaikhs
+cd shaikhs
+export DB_ADMIN_PASSWORD="$(openssl rand -base64 24)"
+nohup bash infra/deploy.sh > deploy.log 2>&1 &
+tail -f deploy.log
+```
+
+What that does: clones the code, generates a strong database password **on your phone**
+(never typed, never sent anywhere), starts the deployment in the background, and streams
+the log.
+
+- It takes **10–15 minutes**. You can lock the phone; the work continues in Azure.
+- If the browser or the session drops, open Cloud Shell again and run
+  `tail -f ~/shaikhs/deploy.log` to pick up where it left off. Re-running is safe either way.
+- When it finishes, the last lines include:
+
+  ```
+  API URL: https://shaikhs-api-xxxxxxxx.<region>.azurecontainerapps.io
+  ```
+
+  Copy that line and send it to me. It is a public address, not a secret.
+
+That is the whole task. Nothing else needs to leave your phone.
+
+> **Worried about cost?** Everything is created in one resource group. To undo the whole
+> deployment: `az group delete --name shaikhs-prod --yes --no-wait`. Pricing for this
+> stack is about US$22–27/month at idle, dominated by the database.
+
+### One-tap redeploys from GitHub (optional)
+
+Once the infrastructure exists, you may prefer not to touch Cloud Shell again. The
+workflow in [`.github/workflows/deploy-api.yml`](../.github/workflows/deploy-api.yml)
+deploys on demand from GitHub's own runners — one tap in the GitHub mobile app, or I can
+trigger it from here.
+
+It authenticates with **OIDC federation**, so no Azure password or client secret is ever
+stored in GitHub. Set it up once, in Cloud Shell:
+
+```bash
+cd ~/shaikhs && bash infra/bootstrap-oidc.sh
+```
+
+The script prints four values. Put them in the repository on GitHub (mobile app → the repo
+→ **Settings → Secrets and variables → Actions**):
+
+| Type | Name | Value |
+| --- | --- | --- |
+| Variable | `AZURE_CLIENT_ID` | printed as Application (client) ID |
+| Variable | `AZURE_TENANT_ID` | printed as Directory (tenant) ID |
+| Variable | `AZURE_SUBSCRIPTION_ID` | printed as Subscription ID |
+| Secret | `DB_ADMIN_PASSWORD` | the same database password the script used |
+
+Then **Actions → Deploy API → Run workflow**. This is optional; the Cloud Shell path above
+is always enough.
+
+> GitHub only offers a manual workflow on the **default branch**, so this becomes
+> available once the backend is merged into `main`. Say the word and I will open and
+> merge the pull request.
+
+### Why you never need to send me credentials
+
+This development environment can reach GitHub, npm and PyPI — and nothing else. It cannot
+call Azure's management API even if it had a credential, so an Azure password here would
+be risk with no benefit. What I need from you is not access; it is the **API URL** at the
+end, plus answers to design questions.
 
 ### Manual equivalent
 
@@ -348,32 +430,20 @@ az containerapp update -g shaikhs-prod -n <app> \
 
 ## 8. What is needed from you
 
-I can write, test, and document everything, but I cannot deploy from here: this
-environment has no Azure CLI and no access to your subscription, and you should never
-paste credentials into a chat.
+Nothing secret, and nothing you have to type into a chat.
 
-So, to stand this up, I need four things:
+1. **Confirm you can create resources.** Contributor + User Access Administrator on a
+   resource group, or Owner. A personal subscription normally allows this.
+2. **A region.** `centralindia` is the default if your users are in India; `uksouth` or
+   `westeurope` also work.
+3. **A sender decision.** The default uses a Microsoft-managed domain
+   (`DoNotReply@<random>.azurecomm.net`) and needs no DNS work. If you own a domain, say
+   which, and I will add the custom-domain steps.
+4. **Run the block in [Deploying from a phone](#deploying-from-a-phone-no-pc-required)**
+   and send me the `API URL` it prints.
 
-1. **Confirmation you can create resources** in your Azure subscription (Contributor +
-   User Access Administrator on a resource group, or Owner).
-2. **A region** — `centralindia` is a sensible default if your users are in India;
-   `uksouth` or `westeurope` also work well.
-3. **A sender address decision.** The default uses a Microsoft-managed domain
-   (`DoNotReply@<random>.azurecomm.net`), which needs no DNS work. If you own a domain
-   (for example `shaikhs.app`), tell me and I will add the custom-domain steps.
-4. **A database password** that you generate and keep — for example `openssl rand -base64 24`.
-   Pass it to the script as an environment variable; it never enters the repository.
+That is the full list. The database password is generated on your device and stays in
+Azure; I never see it and never need it.
 
-Then run:
-
-```bash
-az login
-DB_ADMIN_PASSWORD='<your password>' ./infra/deploy.sh
-```
-
-and send me the `API URL` it prints. I will wire it into the app and run a full
-sign-up → sign-in → reset → sign-out check against the live deployment.
-
-Until then, everything runs locally with the same schema, the same migrations, and the
-same tests — the only difference in production is that PostgreSQL is a managed server
-instead of an embedded one.
+Once I have the URL I will point the app at it and run a full sign-up → sign-in →
+reset → sign-out check against the live deployment, then report back.
