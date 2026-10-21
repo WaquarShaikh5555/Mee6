@@ -26,7 +26,8 @@ Set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` to talk to the API (see
 demo service.
 
 Deploying the backend to Azure takes one command — `DB_ADMIN_PASSWORD='…' ./infra/deploy.sh` —
-and is documented end to end in [docs/BACKEND.md](docs/BACKEND.md).
+and is documented end to end in [docs/BACKEND.md](docs/BACKEND.md). New to Azure, or working
+from a phone? Start with [docs/AZURE_SETUP.md](docs/AZURE_SETUP.md).
 
 Design direction, token values, and architecture decisions are in the app README and in
 [docs/adr](docs/adr).

@@ -120,6 +120,10 @@ without `DATABASE_URL`, and refuses the development `IP_HASH_PEPPER`.
 
 ## 3. Deploy to Azure
 
+> New to Azure, or no computer? [`docs/AZURE_SETUP.md`](AZURE_SETUP.md) explains the
+> account, the resources, how to pick a region, and what it costs — in plain language.
+> This section is the operator's reference.
+
 ### What gets created
 
 All in one resource group, with names suffixed by a hash of the group id so they are
@@ -127,15 +131,16 @@ unique in the subscription:
 
 | Resource | Name pattern | SKU | Cost (approx.) |
 | --- | --- | --- | --- |
-| PostgreSQL Flexible Server + database `shaikhs` | `shaikhs-pg-xxxx` | Burstable B1ms, 32 GB, 7-day backups | US$17/mo |
+| PostgreSQL Flexible Server + database `shaikhs` | `shaikhs-pg-xxxx` | Burstable B1ms, 32 GB, 7-day backups | US$13/mo — **free for 12 months on a new free account** |
 | Container Registry | `acrshaikhsxxxx` | Basic | US$5/mo |
-| Container Apps environment + app | `shaikhs-env-xxxx` / `shaikhs-api-xxxx` | Consumption, 0–3 replicas | US$0–4/mo |
+| Container Apps environment + app | `shaikhs-env-xxxx` / `shaikhs-api-xxxx` | Consumption, 0–3 replicas | US$0–3/mo (monthly free grant covers low traffic) |
 | Log Analytics | `shaikhs-logs-xxxx` | PerGB2018, 30 days | < US$1/mo |
-| Communication Services + managed email domain | `shaikhs-acs-xxxx` | Pay per email | cents per thousand |
+| Communication Services + managed email domain | `shaikhs-acs-xxxx` | Pay per email | pennies |
 | User-assigned managed identity | `shaikhs-api-id` | — | free |
 
-**Total at idle: roughly US$22–27/month**, dominated by the database. Find the current
-prices for your region in the Azure pricing calculator before committing.
+**Total: about US$5–9/month in the first year on a new free account, and US$18–22/month
+after that**, dominated by the database. Prices vary by region — check the Azure pricing
+calculator, and set a budget alert ([`docs/AZURE_SETUP.md`](AZURE_SETUP.md#6-what-it-costs)).
 
 ### Prerequisites
 
