@@ -156,29 +156,29 @@ your account, with everything installed. It is free, apart from pennies of stora
 
 1. Open **portal.azure.com** in your phone browser, or the **Azure mobile app → Home →
    Cloud Shell** card.
-2. If it asks to create storage the first time, tap **Create**.
-3. Paste this block:
+2. **The one prompt you will see:** Cloud Shell asks for a storage account. Tap **Create**.
+   This is Cloud Shell's own scratch disk for your home folder — a few MB, pennies a
+   month — and it is *not* part of the app. It appears once, ever, and you never touch it
+   again.
+3. Paste this single line:
 
    ```bash
-   git clone -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git shaikhs
-   cd shaikhs
-   export DB_ADMIN_PASSWORD="$(openssl rand -base64 24)"
-   nohup bash infra/deploy.sh > deploy.log 2>&1 &
-   tail -f deploy.log
+   git clone -q -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git ~/shaikhs && cd ~/shaikhs && bash infra/deploy.sh 2>&1 | tee deploy.log
    ```
 
 4. Wait. It creates the resource group, deploys the template, builds the server image in
-   Azure, starts it, and waits for `/health`.
+   Azure, starts it, and waits for `/health`. The database password is generated inside the
+   script and stored in Azure, so there is nothing to invent, type, or remember.
 
 Things worth knowing:
 
 - **Cloud Shell ends after 20 minutes without input.** The deployment takes 10–15 minutes,
   but if the session does drop, nothing is broken. Open Cloud Shell again and re-run
   `cd ~/shaikhs && bash infra/deploy.sh` — it skips what already exists and continues.
-- **The password is generated on the device**, inside Azure, and is never printed or sent
-  anywhere. It ends up only in the database and in the Container App's secret store.
-- **Re-running is always safe.** The template is incremental and the image tag is unique per
-  run.
+- **The password is generated inside the script** and is never printed or sent anywhere. It
+  ends up only in the database and in the Container App's secret store.
+- **Re-running is always safe.** The template is incremental, the image tag is unique per
+  run, and an existing database password is reused rather than replaced.
 - The mobile app's Cloud Shell cannot show command history or accept file uploads. Pasting a
   block works fine.
 

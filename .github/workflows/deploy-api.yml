@@ -38,8 +38,9 @@ jobs:
             fi
           done
           if [ -z "${{ secrets.DB_ADMIN_PASSWORD }}" ]; then
-            echo "::error::Repository secret DB_ADMIN_PASSWORD is not set."
-            missing=1
+            # Not fatal: infra/deploy.sh reuses the password the running API
+            # already uses, which is the normal case after the first deploy.
+            echo "::notice::DB_ADMIN_PASSWORD is not set; reusing the deployed database password."
           fi
           exit "$missing"
 

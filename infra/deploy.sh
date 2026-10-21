@@ -9,7 +9,10 @@
 #   • openssl (ships with macOS and most Linux distributions; Git Bash on Windows has it too)
 #
 # Usage
-#   DB_ADMIN_PASSWORD='a-long-password' ./infra/deploy.sh
+#   ./infra/deploy.sh
+#
+# The database password is generated for you and stored only in Azure; pass
+# DB_ADMIN_PASSWORD=... to choose your own.
 #
 # Optional overrides
 #   RESOURCE_GROUP    default: shaikhs-prod
@@ -39,7 +42,36 @@ fail() {
 command -v az >/dev/null 2>&1 || fail "Azure CLI (az) is not installed. See https://aka.ms/install-azure-cli"
 az account show >/dev/null 2>&1 || fail "Not signed in. Run: az login"
 
-[[ -n "${DB_ADMIN_PASSWORD:-}" ]] || fail "Set DB_ADMIN_PASSWORD, e.g. DB_ADMIN_PASSWORD='...' ./infra/deploy.sh"
+# ------------------------------------------------ database password (no typing) ---
+#
+# Generated here when not supplied, so there is nothing to invent, type, or send.
+# On a re-run the password already used by the running API is reused — otherwise
+# the new one would not match the server that was created the first time.
+
+if [[ -z "${DB_ADMIN_PASSWORD:-}" ]]; then
+  EXISTING_APP="$(az containerapp list --resource-group "$RESOURCE_GROUP" \
+    --query "[?starts_with(name, '${PREFIX}-api-')].name | [0]" -o tsv 2>/dev/null || true)"
+
+  if [[ -n "$EXISTING_APP" ]]; then
+    EXISTING_URL="$(az containerapp secret show --resource-group "$RESOURCE_GROUP" \
+      --name "$EXISTING_APP" --secret-name database-url --query value -o tsv 2>/dev/null || true)"
+
+    if [[ -n "$EXISTING_URL" ]]; then
+      DB_ADMIN_PASSWORD="$(python3 -c '
+import sys, urllib.parse
+print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1]).password or ""))
+' "$EXISTING_URL" 2>/dev/null || true)"
+      [[ -n "$DB_ADMIN_PASSWORD" ]] && echo "Reusing the database password already used by $EXISTING_APP."
+    fi
+  fi
+fi
+
+if [[ -z "${DB_ADMIN_PASSWORD:-}" ]]; then
+  # Base64 without characters that need escaping in a URL or a shell.
+  DB_ADMIN_PASSWORD="$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)"
+  echo "Generated a database password (it is stored only in Azure)."
+fi
+
 [[ ${#DB_ADMIN_PASSWORD} -ge 12 ]] || fail "DB_ADMIN_PASSWORD must be at least 12 characters."
 
 if [[ -z "${IP_HASH_PEPPER:-}" ]]; then
@@ -71,7 +103,7 @@ if [[ -n "$ALLOWED_REGIONS" ]]; then
       echo "$ALLOWED_REGIONS" | sed 's/^/  • /'
       echo
       echo "Re-run with one of them, for example:"
-      echo "  LOCATION=centralindia DB_ADMIN_PASSWORD='...' ./infra/deploy.sh"
+      echo "  LOCATION=$(head -n1 <<< "$ALLOWED_REGIONS") ./infra/deploy.sh"
     } >&2
     exit 1
   fi

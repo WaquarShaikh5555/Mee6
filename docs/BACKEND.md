@@ -164,10 +164,11 @@ Docker is *not* required — the image is built by Azure Container Registry.
 From the repository root:
 
 ```bash
-DB_ADMIN_PASSWORD='choose-a-long-password' ./infra/deploy.sh
+./infra/deploy.sh
 ```
 
-Optional overrides (environment variables):
+That is genuinely all of it. The database password is generated and stored in Azure; you
+never see or need it. Optional overrides (environment variables):
 
 | Variable | Default | Notes |
 | --- | --- | --- |
@@ -177,6 +178,7 @@ Optional overrides (environment variables):
 | `ACS_DATA_LOCATION` | `Asia Pacific` | Where email data is stored |
 | `CORS_ORIGINS` | empty | Only needed for the web build, e.g. `https://app.example.com` |
 | `IP_HASH_PEPPER` | generated | Keep it stable across deploys |
+| `DB_ADMIN_PASSWORD` | generated | Only set it if you want to choose the password |
 
 The script takes 10–15 minutes on the first run. It:
 
@@ -201,25 +203,24 @@ subscription, with `az`, `git` and `openssl` installed. It works in a mobile bro
 
 **Open it:** the Azure mobile app (iOS/Android) → **Cloud Shell** (the `>_` icon), or
 [portal.azure.com](https://portal.azure.com) in Chrome/Safari → the `>_` icon in the top bar.
-The first time it asks to create storage — tap **Create**.
 
-Then paste this entire block and press enter:
+The **first** time, Cloud Shell asks for a storage account. Tap **Create** — that is
+Cloud Shell's own small disk for your home directory (a few MB, costing pennies), not part
+of the app. It happens once, ever.
+
+Then paste this single line:
 
 ```bash
-git clone -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git shaikhs
-cd shaikhs
-export DB_ADMIN_PASSWORD="$(openssl rand -base64 24)"
-nohup bash infra/deploy.sh > deploy.log 2>&1 &
-tail -f deploy.log
+git clone -q -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git ~/shaikhs && cd ~/shaikhs && bash infra/deploy.sh 2>&1 | tee deploy.log
 ```
 
-What that does: clones the code, generates a strong database password **on your phone**
-(never typed, never sent anywhere), starts the deployment in the background, and streams
-the log.
+That is the whole task. The script generates the database password itself, deploys, builds
+the image, starts it, and waits for `/health`. **Nothing is ever typed, saved, or sent.**
 
 - It takes **10–15 minutes**. You can lock the phone; the work continues in Azure.
 - If the browser or the session drops, open Cloud Shell again and run
-  `tail -f ~/shaikhs/deploy.log` to pick up where it left off. Re-running is safe either way.
+  `cd ~/shaikhs && bash infra/deploy.sh` — it reuses what exists, including the database
+  password, and carries on.
 - When it finishes, the last lines include:
 
   ```
@@ -227,8 +228,6 @@ the log.
   ```
 
   Copy that line and send it to me. It is a public address, not a secret.
-
-That is the whole task. Nothing else needs to leave your phone.
 
 > **Worried about cost?** Everything is created in one resource group. To undo the whole
 > deployment: `az group delete --name shaikhs-prod --yes --no-wait`. Pricing for this

@@ -166,11 +166,15 @@ GitHub mobile app → the repository → Settings → Secrets and variables → 
     AZURE_LOCATION         $LOCATION
 
   Secrets (tab "Secrets")
-    DB_ADMIN_PASSWORD      $DB_PASSWORD
     IP_HASH_PEPPER         $IP_HASH_PEPPER
 
-Keep this screen open while you copy the two secrets, then clear the terminal.
-Treat those two values as passwords: database access and rate-limit hashing.
+DB_ADMIN_PASSWORD is optional: if it is not set, the deployment reuses the
+password the running API already uses. Add it only for the very first deploy,
+in which case the value is:
+
+    $DB_PASSWORD
+
+Keep this screen open while you copy it, then clear the terminal.
 
 EOF
 fi
