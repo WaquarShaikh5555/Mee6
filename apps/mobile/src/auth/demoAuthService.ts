@@ -132,7 +132,7 @@ export const demoAuthService: AuthService = {
 
   async resetPassword(_input: ResetPasswordInput): Promise<void> {
     // There is no token store offline, so a link cannot be honoured here.
-    throw new AuthError('invalid-token', 'Reset links only work with the connected server.');
+    throw new AuthError('invalid-token', 'Reset links only work with a connected account.');
   },
 };
 

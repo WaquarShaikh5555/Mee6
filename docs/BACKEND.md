@@ -1,5 +1,12 @@
 # Shaikh's backend
 
+> **Not the current architecture.** The app now uses Supabase — see
+> [`docs/SUPABASE.md`](SUPABASE.md). This document describes a self-hosted Fastify + Azure
+> deployment that still works and is still tested, but nothing in the app depends on it.
+> It is kept for the schema and security reasoning, and for the day the app outgrows the
+> free plan.
+
+
 The app's accounts, sessions, and password resets live here. This document is the
 operator's manual: what exists, how to run it on a laptop, how to deploy it to Azure,
 and what to do when something breaks.

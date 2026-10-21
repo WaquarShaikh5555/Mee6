@@ -1,5 +1,10 @@
 # Setting up Azure for Shaikh's
 
+> **Not the current architecture.** The app now uses Supabase, which needs no deployment
+> step at all — see [`docs/SUPABASE.md`](SUPABASE.md). This guide describes hosting the
+> Fastify API on Azure and is kept for reference only.
+
+
 A plain-language guide to the Azure side: what an account is, what gets created, which
 region to pick, what it costs, and how to undo it. No prior Azure knowledge assumed, and
 nothing here requires a computer.

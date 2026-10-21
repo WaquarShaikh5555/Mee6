@@ -44,6 +44,7 @@ export type AuthErrorCode =
   | 'weak-password'
   | 'invalid-email'
   | 'invalid-token'
+  | 'email-confirmation-required'
   | 'network'
   | 'unknown';
 

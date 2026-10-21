@@ -203,7 +203,7 @@ describe('auth screens', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Set new password' }));
 
     expect(
-      await screen.findByText('Reset links only work with the connected server.', undefined, {
+      await screen.findByText('Reset links only work with a connected account.', undefined, {
         timeout: 3000,
       }),
     ).toBeTruthy();

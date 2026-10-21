@@ -7,27 +7,26 @@ Two things live here:
    [docs/MOBILE_TOOLCHAIN_REQUIREMENTS.md](docs/MOBILE_TOOLCHAIN_REQUIREMENTS.md).
 2. **Shaikh's** — the app those skills were installed to build.
    - Mobile app: `apps/mobile` — [README](apps/mobile/README.md)
-   - Backend API: `apps/api` — [README](apps/api/README.md)
-   - Infrastructure as code: `infra` — [deployment guide](docs/BACKEND.md)
+   - Backend: Supabase (hosted, configured) — [docs/SUPABASE.md](docs/SUPABASE.md)
 
 ## Shaikh's
 
-Expo + React Native + TypeScript on the client; Fastify + PostgreSQL on the server. The design
-foundation, navigation, and real authentication are complete and tested (92 mobile tests, 48 API
-tests).
+Expo + React Native + TypeScript on the client. Accounts and data live in Supabase
+(hosted PostgreSQL) — no server to deploy, no card required.
 
 ```bash
-cd apps/api && npm install && npm run dev     # http://localhost:8082
-cd apps/mobile && npm install && npx expo start
+cd apps/mobile
+npm install
+npx expo start
 ```
 
-Set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` to talk to the API (see
-[apps/mobile/.env.example](apps/mobile/.env.example)); without it the app uses its on-device
-demo service.
+Real authentication is wired up and tested (109 tests). Set the two `EXPO_PUBLIC_SUPABASE_*`
+values from [apps/mobile/.env.example](apps/mobile/.env.example) in `apps/mobile/.env`;
+without them the app falls back to an on-device demo service so screens stay usable.
 
-Deploying the backend to Azure takes one command — `DB_ADMIN_PASSWORD='…' ./infra/deploy.sh` —
-and is documented end to end in [docs/BACKEND.md](docs/BACKEND.md). New to Azure, or working
-from a phone? Start with [docs/AZURE_SETUP.md](docs/AZURE_SETUP.md).
+Status of the backend, what is configured, and its limits:
+[docs/SUPABASE.md](docs/SUPABASE.md).
 
 Design direction, token values, and architecture decisions are in the app README and in
-[docs/adr](docs/adr).
+[docs/adr](docs/adr). `apps/api` and `infra/` hold a self-hosted alternative that the app no
+longer uses — kept for reference.

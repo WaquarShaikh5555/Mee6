@@ -1,4 +1,9 @@
-# Shaikh's API
+# Shaikh's API (not used by the app)
+
+> **Superseded.** The app signs up and signs in through Supabase — see
+> [`docs/SUPABASE.md`](../../docs/SUPABASE.md). This server still builds, passes its 48
+> tests, and deploys with `infra/`, but the mobile app no longer calls it. Kept for the
+> schema and security work, and as the exit path if the app outgrows Supabase's free tier.
 
 Fastify + PostgreSQL backend for the Shaikh's mobile app: accounts, sessions, password
 resets, and profile management.

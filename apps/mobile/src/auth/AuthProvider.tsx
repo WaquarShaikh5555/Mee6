@@ -10,6 +10,8 @@ import {
 
 import { demoAuthService, signInWithDemoAccount } from './demoAuthService';
 import { httpAuthService, isApiConfigured } from './httpAuthService';
+import { isSupabaseConfigured } from './supabaseClient';
+import { supabaseAuthService } from './supabaseAuthService';
 import {
   AuthError,
   type AuthService,
@@ -21,10 +23,16 @@ import {
 /**
  * The single seam between the app and the identity provider.
  *
- * Set `EXPO_PUBLIC_API_URL` (see .env.example) to use the real backend; without
- * it the app runs against the on-device demo service so screens stay usable.
+ * Supabase (the database and account system) is used whenever its two
+ * environment variables are present. The Fastify API is the fallback for
+ * deployments that host their own server, and the on-device demo service keeps
+ * every screen usable when neither is configured.
  */
-const service: AuthService = isApiConfigured() ? httpAuthService : demoAuthService;
+const service: AuthService = isSupabaseConfigured()
+  ? supabaseAuthService
+  : isApiConfigured()
+    ? httpAuthService
+    : demoAuthService;
 
 export type AuthStatus = 'restoring' | 'signedOut' | 'signedIn';
 

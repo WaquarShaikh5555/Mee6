@@ -2,14 +2,14 @@
 
 A cross-platform app for iOS and Android, built with Expo (React Native) and TypeScript.
 
-**Current state: Step 1 complete, backend integration in progress.** Design foundation,
-navigation, and authentication are in place and verified; the app talks to the real API in
-`apps/api` when `EXPO_PUBLIC_API_URL` is set. Features come next.
+**Current state: real accounts are live.** Design foundation, navigation, and authentication
+are in place and verified, and the app signs up and signs in against a hosted PostgreSQL
+database (Supabase). Features come next.
 
 - **Stack:** Expo SDK 58 · React Native 0.88 · React 19 · TypeScript 6 (strict) · Expo Router
 - **Runs on:** iOS, Android, and web from one codebase
-- **Tests:** 92 passing (design system, auth contracts, HTTP client, screen rendering)
-- **Accounts:** the Shaikh's API when `EXPO_PUBLIC_API_URL` is set, otherwise the on-device
+- **Tests:** 109 passing (design system, auth contracts, Supabase client, HTTP client, screens)
+- **Accounts:** Supabase when `EXPO_PUBLIC_SUPABASE_*` is set, otherwise the on-device
   preview service
 
 ## Run it
@@ -99,48 +99,48 @@ has one owner; every interactive element has an accessibility label and a state;
 
 ## Authentication
 
-The app talks to an `AuthService` interface, never to a vendor SDK. Which implementation it uses
+The app talks to an `AuthService` interface, never to a vendor SDK. Which implementation runs
 is one line in `src/auth/AuthProvider.tsx`:
 
 ```ts
-const service: AuthService = isApiConfigured() ? httpAuthService : demoAuthService;
+const service: AuthService = isSupabaseConfigured()
+  ? supabaseAuthService
+  : isApiConfigured()
+    ? httpAuthService
+    : demoAuthService;
 ```
 
-`isApiConfigured()` is true when `EXPO_PUBLIC_API_URL` is set at build time:
+Configuration lives in `apps/mobile/.env` (git-ignored):
 
 ```bash
-# apps/mobile/.env
-EXPO_PUBLIC_API_URL=http://192.168.1.20:8082      # phone on the same Wi-Fi as your laptop
-# EXPO_PUBLIC_API_URL=https://<app>.azurecontainerapps.io   # deployed backend
+EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable / anon key>
 ```
 
 Restart the dev server after changing it (`npx expo start -c` clears the cache).
 
-### With the real API (`httpAuthService`)
+### With Supabase (`supabaseAuthService`)
 
-- Passwords are hashed with argon2id on the server; the app never stores one.
-- The session token is opaque (256 bits), stored in the iOS Keychain / Android Keystore, and
-  revoked server-side on sign-out.
-- `restore()` revalidates the stored token against `GET /v1/auth/session`, refreshes the expiry,
-  and clears the token when it has been revoked. If the device is offline it keeps the last
-  known session rather than signing the person out.
-- Server error codes map onto the app's `AuthError` codes, so screens show the same copy either
-  way.
-- Password reset sends a real email through Azure Communication Services and the link opens
-  `shaikhs://reset-password?token=…`.
+- Passwords are hashed by the auth server; the app never stores one.
+- Sessions are JWTs refreshed in the background, held in the iOS Keychain / Android Keystore
+  through `expo-secure-store`.
+- `restore()` revalidates the stored token and clears it if the account is gone or revoked.
+- Profile rows are created by a database trigger and protected by row-level security, so the
+  client cannot read or write anyone else's data even if it is modified.
+- Password reset emails link to `shaikhs://reset-password`, which opens the reset screen.
 
 ### Without it (`demoAuthService`)
 
 The local preview service stores accounts on the device and **does not verify passwords**. It
-exists so the flow still works for anyone who has not started the backend. The Welcome screen
+exists so the flow still works for anyone who has not configured a project. The Welcome screen
 labels it "Preview build" and the demo button only appears in that mode.
 
 ### Tests
 
-`__tests__/httpAuthService.test.ts` stubs `fetch` and asserts exactly what crosses the wire:
-paths, bodies, bearer tokens, error-code mapping, and what happens to the stored session on
-every branch (revoked, offline, expired). `__tests__/auth.test.ts` covers the demo service and
-shared validation rules; `__tests__/screens.test.tsx` renders every screen.
+`__tests__/supabaseAuthService.test.ts` stubs the Supabase client and asserts the mapping the
+UI depends on: which SDK calls happen, error-code translation, and how the stored session
+behaves when it is revoked, refreshed, or expired. `__tests__/screens.test.tsx` renders every
+screen inside the real providers.
 
 ## Platform notes
 

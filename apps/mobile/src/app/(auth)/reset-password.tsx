@@ -21,7 +21,11 @@ import { useTheme } from '@/theme/ThemeProvider';
 export default function ResetPasswordScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ token?: string }>();
+  const params = useLocalSearchParams<{
+    token?: string;
+    token_hash?: string;
+    code?: string;
+  }>();
   const { resetPassword, isSubmitting, error, clearError } = useAuth();
 
   const [password, setPassword] = useState('');
@@ -29,7 +33,11 @@ export default function ResetPasswordScreen() {
   const [fieldError, setFieldError] = useState<string | undefined>();
   const [done, setDone] = useState(false);
 
-  const token = typeof params.token === 'string' ? params.token.trim() : '';
+  // Supabase writes the one-time credential into whichever parameter its email
+  // template uses; accept all of the documented shapes.
+  const token = [params.token, params.token_hash, params.code]
+    .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    ?.trim() ?? '';
 
   async function submit() {
     clearError();
@@ -56,8 +64,8 @@ export default function ResetPasswordScreen() {
         <View style={{ gap: theme.space.lg, paddingTop: theme.space['2xl'] }}>
           <Text variant="title2">This link is incomplete</Text>
           <Text variant="body" tone="secondary">
-            The reset link is missing its token — usually because an email client cut the line.
-            Request a fresh one and open it from the inbox.
+            The reset link did not carry its one-time code — usually because an email client
+            wrapped or truncated the line. Request a fresh one and open it from the inbox.
           </Text>
           <Button label="Request a new link" onPress={() => router.replace('/forgot-password')} />
         </View>
