@@ -33,8 +33,9 @@ is the only real decision you have to make (section 4).
 - A **Microsoft account** (an `@outlook.com` or `@hotmail.com` address, or any email you
   register with Microsoft). A GitHub account also works for sign-in.
 - A **phone number** for verification.
-- A **debit or credit card** (not prepaid). Azure uses it to verify identity. On a new free
-  account it is not charged unless you later upgrade and exceed the free amounts.
+- A **debit or credit card** (not prepaid) — **not needed on Azure for Students**. Azure uses
+  it to verify identity on a normal account; it is not charged unless you upgrade and exceed
+  the free amounts.
 - Optionally the **Azure mobile app** (iOS / Android) — it has Cloud Shell built in, which
   is the terminal used in section 5.
 
@@ -42,6 +43,33 @@ If you have no Azure account yet: [azure.microsoft.com/free](https://azure.micro
 If you have a college email address, check
 [Azure for Students](https://azure.microsoft.com/free/students) first — it usually avoids the
 card requirement.
+
+### If you have Azure for Students
+
+Your subscription is different from a normal one in three ways worth knowing before you
+deploy.
+
+**1. Your regions are restricted — check this first.** Student subscriptions carry a
+Microsoft-managed Azure Policy called *"Allowed resource deployment regions"*. Deploying
+outside that list fails with `RequestDisallowedByAzure`, and the list **varies per
+student** — it is not just "all of India". See which ones you have:
+
+```bash
+az policy assignment list \
+  --query "[?contains(policyDefinitionId, 'e56962a6')].parameters.listOfAllowedLocations.value[]" \
+  --output tsv
+```
+
+`centralindia` is on most student lists, but trust the output, not this page. The deploy
+script runs this check itself and stops with the list if the region is wrong.
+
+**2. You have US$100 for 12 months, and no card on file.** Once the credit is gone the
+subscription is disabled — services stop, but **you cannot be billed**, because there is no
+payment method. That makes the risk here zero rather than small.
+
+**3. The 12-month free amounts apply too**, including PostgreSQL Flexible Server B1ms
+(750 hours/month, 32 GB storage). So in practice the only charge is the container registry:
+about **US$5/month ≈ US$60 for the year**, leaving roughly US$40 of credit.
 
 ### Which kind of account you have matters for cost
 
@@ -96,14 +124,15 @@ Communication Services stores data in a *data location* you choose separately.
 
 | Region | Where | Pick it when |
 | --- | --- | --- |
-| **`centralindia`** | Pune | **Recommended.** Closest to you; you are in Pune |
+| **`centralindia`** | Pune | **Recommended.** Closest to you; on most student lists |
 | `southindia` | Chennai | Alternative India region |
 | `jioindiawest` | Mumbai | Another India option; check service availability |
 | `uksouth` / `westeurope` | London / Netherlands | Most of your users are in Europe |
 | `eastus2` / `centralus` | United States | Most of your users are in America |
 
 Both Container Apps and PostgreSQL Flexible Server are available in `centralindia`, as are
-all the other resources in the list above.
+all the other resources in the list above — but on a student subscription the allowed list
+wins over all of this. Run the check in section 2 first.
 
 For the email **data location**, `Asia Pacific` is the sensible match for India. It only
 decides where Azure stores message metadata; it does not affect delivery speed.

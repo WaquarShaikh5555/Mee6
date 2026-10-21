@@ -55,6 +55,29 @@ echo "Resource group: $RESOURCE_GROUP ($LOCATION)"
 echo "Prefix: $PREFIX"
 echo
 
+# Azure for Students subscriptions carry a Microsoft-managed "Allowed resource
+# deployment regions" policy. Deploying elsewhere fails with RequestDisallowedByAzure
+# after several minutes of work, so check first. The built-in policy definition id
+# is e56962a6-4747-49cd-b67b-bf8b01975c4c.
+ALLOWED_REGIONS="$(az policy assignment list \
+  --query "[?contains(policyDefinitionId, 'e56962a6')].parameters.listOfAllowedLocations.value[]" \
+  --output tsv 2>/dev/null || true)"
+
+if [[ -n "$ALLOWED_REGIONS" ]]; then
+  if ! grep -qix "$LOCATION" <<< "$ALLOWED_REGIONS"; then
+    {
+      echo "ERROR: your subscription only allows these regions:"
+      echo
+      echo "$ALLOWED_REGIONS" | sed 's/^/  • /'
+      echo
+      echo "Re-run with one of them, for example:"
+      echo "  LOCATION=centralindia DB_ADMIN_PASSWORD='...' ./infra/deploy.sh"
+    } >&2
+    exit 1
+  fi
+  echo "Region check: $LOCATION is allowed by your subscription policy."
+fi
+
 az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
 
 DEPLOYMENT_NAME="shaikhs-$(date -u +%Y%m%d%H%M%S)"

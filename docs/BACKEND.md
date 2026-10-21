@@ -139,7 +139,9 @@ unique in the subscription:
 | User-assigned managed identity | `shaikhs-api-id` | — | free |
 
 **Total: about US$5–9/month in the first year on a new free account, and US$18–22/month
-after that**, dominated by the database. Prices vary by region — check the Azure pricing
+after that**, dominated by the database. On Azure for Students the US$100 credit covers the
+whole first year, and the subscription cannot overspend — see
+[`docs/AZURE_SETUP.md`](AZURE_SETUP.md#2-what-you-need-before-starting). Prices vary by region — check the Azure pricing
 calculator, and set a budget alert ([`docs/AZURE_SETUP.md`](AZURE_SETUP.md#6-what-it-costs)).
 
 ### Prerequisites
