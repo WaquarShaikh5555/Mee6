@@ -23,3 +23,10 @@ jest.mock('@expo/vector-icons', () => {
   };
   return new Proxy({}, { get: (_target, key) => makeIcon(String(key)) });
 });
+
+// Tests describe the app's behaviour, not this machine's configuration. A
+// developer with a real `.env` (or a CI job that sets one) must get exactly the
+// same results, so the Supabase variables start empty in every suite.
+delete process.env.EXPO_PUBLIC_SUPABASE_URL;
+delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+delete process.env.EXPO_PUBLIC_API_URL;
