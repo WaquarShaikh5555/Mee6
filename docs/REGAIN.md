@@ -1,10 +1,20 @@
 # Regain
 
-**Status: the feature is built and working in the app. The interception — actually stopping
-Instagram before it shows a Reel — is the one part that cannot exist until Shaikh's is
-installed as a real app on a phone rather than run in Expo Go.**
+**Status: shipped as an Android app.** The rules, the screens, and the interception are all
+built. An installable APK is produced by GitHub Actions on every push:
 
-That distinction matters, so this document is explicit about which is which.
+```
+https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk
+```
+
+Install it on the phone, open Regain, switch it on, and allow it in
+**Settings → Accessibility**. From then on the closed sections are covered by
+*Make yourself better.* while messages keep working.
+
+The one thing that has not happened yet is calibration on a real phone. The detector
+recognises surfaces by their view ids (see §3), and those names are the sort of thing that
+changes with app releases. It is built to fail safe: if a screen is not recognised,
+**nothing is blocked** — never the other way round.
 
 ---
 
@@ -51,7 +61,8 @@ Everything below is real, typed, and covered by tests (`__tests__/regain.test.ts
 | The block screen with hold-to-disable | `app/(app)/regain/blocked.tsx`, `regain/ShieldMessage.tsx` | Done |
 | Rules catalog (6 apps, 25 sections) | `regain/catalog.ts` | Done |
 | Persistence, repair of corrupt state, daily counts | `regain/store.ts`, `regain/RegainProvider.tsx` | Done |
-| Native enforcement contract | `regain/enforcement.ts` | Interface only |
+| Native enforcement (Android) | `modules/regain/` | Built — accessibility service + shield |
+| APK build | `.github/workflows/android.yml` | Green; publishes to the `apk` release |
 
 Rules survive restarts, a corrupt record is repaired rather than fatal, and turning every
 section off is remembered as a real choice (not silently reverted to the defaults).
@@ -127,27 +138,26 @@ shield action + device activity monitor), and approval takes days to weeks
 
 ---
 
-## 4. The path to a build that actually blocks
+## 4. Where the Android build stands
 
-1. **Create a development build** (`npx expo run:android` locally, or an EAS profile). Expo
-   Go is out of scope for this feature, permanently.
-2. **Android module** — an Expo module wrapping an `AccessibilityService`:
-   - publishes the current foreground package and a `surface` classification
-   - reads `regain_rules` from shared preferences, kept in sync by `syncRules()`
-   - draws a full-screen overlay when a blocked surface appears, using the same copy as
-     `ShieldMessage`
-   - requests `SYSTEM_ALERT_WINDOW` only if drawn as a system overlay rather than an
-     accessibility overlay
-3. **iOS module** — `FamilyControls` + `ManagedSettings` + a Shield Configuration extension,
-   with `AuthorizationCenter.requestAuthorization(.individual)` and a `FamilyActivityPicker`
-   for choosing apps. Rules map to whole-app shields, and the UI already knows to say so
-   (`granularity: 'app-only'`).
-4. **Wire `enforcement.ts`** to the real module — the interface does not change.
-5. **Test on a physical device.** Accessibility and Screen Time behave differently in
-   emulators and simulators; neither can be trusted for this feature.
+Done:
 
-Nothing in the app's screens has to change for any of that: the rules, the copy, and the
-block screen are already built against the interface.
+1. ✅ A local Expo module with an accessibility service, autolinked by `expo prebuild`.
+2. ✅ Rules mirrored from the app into native storage on every change, so enforcement
+   survives the app being closed.
+3. ✅ A shield drawn over the blocked surface, with the same copy as the in-app preview.
+4. ✅ A signed APK built and published by CI on every push, with a stable download URL.
+
+Still to do, in order:
+
+1. **Calibrate on a real phone.** Open Instagram, watch which view ids are present, and
+   adjust `Surfaces.TOKENS`. This is expected work, not a defect — the tables are the one
+   part that cannot be written from a desk.
+2. **iOS.** Not started. It needs a Mac, an Apple Developer account, and the Family Controls
+   entitlement approval described above; the app already reports `app-only` granularity
+   there, so the UI is ready.
+3. **A Play Store release**, if wanted: it needs an upload key, a data-safety declaration,
+   and the accessibility-service declaration with a demo video.
 
 ---
 
@@ -178,6 +188,9 @@ src/app/(app)/
   regain/index.tsx    Master switch, apps, how it works
   regain/[appId].tsx  Per-section switches
   regain/blocked.tsx  What a blocked surface looks like
+modules/regain/      Android: the accessibility service, the shield, the JS bridge
 __tests__/
   regain.test.tsx     29 tests: rules, repair, counting, every screen, hold-to-disable
+.github/workflows/
+  android.yml         Type-check, test, prebuild, assemble, publish the APK
 ```

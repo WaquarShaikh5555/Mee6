@@ -16,8 +16,12 @@ Expo + React Native + TypeScript on the client. Accounts and data live in Supaba
 
 **First feature: Regain.** A dashboard button opens a screen that closes the compulsive parts
 of social apps — Reels, Shorts, Spotlight — while leaving messages and anything someone chose
-to send you open. Rules and the block screen are built and tested
-([docs/REGAIN.md](docs/REGAIN.md)); the in-app interception needs a native build.
+to send you open.
+
+**Install it on an Android phone:** [download `shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk),
+open it, allow installing from this source, then open Regain and allow it in
+Settings → Accessibility. Built by GitHub Actions on every push
+([how it works](docs/REGAIN.md)).
 
 ```bash
 cd apps/mobile

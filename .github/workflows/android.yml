@@ -95,6 +95,22 @@ jobs:
           unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.js
           grep -q "ngufuocbyqrucrytqzbt" /tmp/bundle.js
           echo "bundle carries the live Supabase project"
+
+          TOOLS="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+          AAPT2="$(ls -d "$TOOLS"/*/aapt2 | sort -V | tail -1)"
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$APK" > /tmp/manifest.txt
+          grep -q "com.shaikhs.app" /tmp/manifest.txt
+          # The service has to survive manifest merging, or the app installs
+          # with nothing to switch on in Accessibility settings.
+          grep -q "RegainAccessibilityService" /tmp/manifest.txt
+          grep -q "BIND_ACCESSIBILITY_SERVICE" /tmp/manifest.txt
+          for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
+            grep -q "$app" /tmp/manifest.txt
+          done
+          echo "manifest declares the service and the apps it may look at"
+
+          APKSIGNER="$(ls -d "$TOOLS"/*/apksigner | sort -V | tail -1)"
+          "$APKSIGNER" verify --print-certs "$APK" | head -3
           sha256sum "$APK"
 
       - name: Publish the release

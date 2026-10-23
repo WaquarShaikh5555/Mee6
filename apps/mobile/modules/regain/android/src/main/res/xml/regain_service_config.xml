@@ -15,5 +15,4 @@
     android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:description="@string/regain_service_description"
-    android:notificationTimeout="100"
-    android:settingsActivity="com.shaikhs.app" />
+    android:notificationTimeout="100" />
