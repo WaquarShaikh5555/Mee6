@@ -1,0 +1,125 @@
+name: Android app
+
+# Builds a real, installable APK and attaches it to the "apk" release, so the
+# download link never changes:
+#
+#   https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk
+#
+# Signing: Expo's generated project signs release builds with the standard
+# debug keystore that ships inside the React Native template. That key is the
+# same on every run, so updates install over each other — but it is also a
+# public key, so this build is for sideloading only, never the Play Store.
+
+on:
+  push:
+    branches: [arena/b0b002ad-mee6]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    env:
+      # Publishable values only. The anon key is designed to be embedded in a
+      # client app; every table is protected by row-level security, so it grants
+      # nothing on its own. The service_role / secret key must never appear here.
+      EXPO_PUBLIC_SUPABASE_URL: https://ngufuocbyqrucrytqzbt.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndWZ1b2NieXFydWNyeXRxemJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MDAzMDUsImV4cCI6MjEwODA3NjMwNX0.LqESWeC2i8JLdSYTzzTeGQEEAEZlOnkT2417-KkcA3g
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail fast: a type error or a broken rule should stop the build here,
+      # not after twenty minutes of Gradle.
+      - name: Type-check and test
+        run: npm run verify
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build the APK
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Check the build
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          ls -lh "$APK"
+          unzip -l "$APK" | grep -q "assets/index.android.bundle"
+          # If the Supabase URL is missing the app would silently run in demo
+          # mode; refuse to publish a build like that.
+          unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.js
+          grep -q "ngufuocbyqrucrytqzbt" /tmp/bundle.js
+          echo "bundle carries the live Supabase project"
+          sha256sum "$APK"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp android/app/build/outputs/apk/release/app-release.apk shaikhs.apk
+
+          cat > release-notes.md <<'NOTES'
+          **Shaikh's for Android** — download `shaikhs.apk` below and open it on your phone.
+
+          If Android asks, allow installing from this source. Built from the latest
+          commit on this branch.
+
+          Regain is here: open the app → the Regain card on the home screen →
+          switch it on → allow Regain in Settings → Accessibility. Then Reels,
+          Shorts and the rest stay closed while messages keep working.
+          NOTES
+
+          if gh release view apk >/dev/null 2>&1; then
+            gh release upload apk shaikhs.apk --clobber
+            gh release edit apk --title "Shaikh's — Android app" --notes-file release-notes.md
+          else
+            gh release create apk shaikhs.apk \
+              --title "Shaikh's — Android app" \
+              --notes-file release-notes.md
+          fi
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/download/apk/shaikhs.apk"
+
+      - name: Keep the APK as an artifact too
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaikhs-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: warn

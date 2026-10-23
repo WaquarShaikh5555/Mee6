@@ -21,6 +21,7 @@ import {
 import { storage } from '@/lib/storage';
 
 import { findApp, type RegainApp } from './catalog';
+import { syncRules } from './enforcement';
 import {
   activeApps,
   blockedSectionsFor,
@@ -93,6 +94,18 @@ export function RegainProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isReady) return;
     void storage.set(REGAIN_STORAGE_KEY, serializeState(state));
+  }, [isReady, state]);
+
+  /**
+   * The phone enforces the rules, not this process: the accessibility service
+   * has to keep working when the app is closed. So every change is mirrored to
+   * native storage. On the web, or in Expo Go, `syncRules` is a no-op.
+   */
+  useEffect(() => {
+    if (!isReady) return;
+
+    const rules = Object.entries(state.rules).map(([appId, sections]) => ({ appId, sections }));
+    void syncRules(rules, state.enabled);
   }, [isReady, state]);
 
   const setEnabled = useCallback((enabled: boolean) => {

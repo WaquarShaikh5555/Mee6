@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { AppState, Pressable, Switch, View } from 'react-native';
 
 import { useRegain } from '@/regain/RegainProvider';
 import { REGAIN_APPS } from '@/regain/catalog';
@@ -42,11 +42,24 @@ export default function RegainScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void getEnforcementStatus().then((status) => {
-      if (!cancelled) setEnforcement(status);
+
+    const refresh = () => {
+      void getEnforcementStatus().then((status) => {
+        if (!cancelled) setEnforcement(status);
+      });
+    };
+
+    refresh();
+
+    // The permission is granted in Settings, so the answer changes while the
+    // app is in the background. Re-ask on the way back in.
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') refresh();
     });
+
     return () => {
       cancelled = true;
+      subscription.remove();
     };
   }, []);
 
