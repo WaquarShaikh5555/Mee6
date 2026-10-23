@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
-import { Platform, Share, View } from 'react-native';
+import { Linking, Platform, Share, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { useRegain } from '@/regain/RegainProvider';
@@ -63,12 +63,31 @@ export default function DeveloperScreen() {
     sections: blockedSectionsFor(state, app),
   })).filter((entry) => entry.sections.length > 0);
 
+  // A one-tap path to send the owner (me) the ids this phone actually shows.
+  // It is the difference between guessing at another company's view names and
+  // reading them.
+  const reportUrl = `https://github.com/WaquarShaikh5555/Mee6/issues/new?title=${encodeURIComponent(
+    'Regain did not block a screen',
+  )}&body=${encodeURIComponent(
+    [
+      'What happened:',
+      '',
+      '',
+      '---',
+      `version: ${Constants.expoConfig?.version ?? '?'}`,
+      `platform: ${Platform.OS} ${String(Platform.Version)}`,
+      `last seen: ${sighting?.summary ?? 'nothing recorded'}`,
+      `service error: ${sighting?.error || 'none'}`,
+    ].join('\n'),
+  )}`;
+
   const diagnostics = [
     `Shaikh's ${Constants.expoConfig?.version ?? '?'} · ${Platform.OS} ${Platform.Version}`,
     `account: ${user.email} · owner`,
     `enforcement: ${enforcement?.availability ?? 'unknown'}`,
     `regain: ${enabled ? 'on' : 'off'} · ${blockedSectionCount} sections · ${todayCount} today`,
     `last seen: ${sighting?.summary || 'nothing yet'}`,
+    `service error: ${sighting?.error || 'none'}`,
     `rules: ${JSON.stringify(Object.fromEntries(rules.map((r) => [r.app, r.sections])))}`,
   ].join('\n');
 
@@ -118,8 +137,13 @@ export default function DeveloperScreen() {
           </Text>
           <Text variant="caption" tone="tertiary">
             This is how the recogniser is corrected for a new version of an app: it shows the
-            view ids the phone actually found.
+            view ids the phone actually found, and how much of the screen each covered.
           </Text>
+          {sighting?.error ? (
+            <Text variant="caption" tone="danger" selectable>
+              Service error: {sighting.error}
+            </Text>
+          ) : null}
         </Card>
       </View>
 
@@ -152,6 +176,10 @@ export default function DeveloperScreen() {
           label="Refresh"
           variant="secondary"
           onPress={() => void refresh()}
+        />
+        <Button
+          label="Report what Regain saw"
+          onPress={() => void Linking.openURL(reportUrl)}
         />
         <Button
           label="Share diagnostics"

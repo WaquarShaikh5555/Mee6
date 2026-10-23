@@ -43,6 +43,8 @@ export type Sighting = {
   at: number;
   /** Encounters on the phone today, counted natively. */
   today: number;
+  /** The last exception the service caught, if any. Empty when healthy. */
+  error?: string;
 };
 
 export type RegainNativeModule = {

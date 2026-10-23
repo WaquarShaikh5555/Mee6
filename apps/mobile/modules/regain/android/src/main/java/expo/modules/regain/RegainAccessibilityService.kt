@@ -34,13 +34,36 @@ class RegainAccessibilityService : AccessibilityService() {
       private set
 
     private const val SETTLE_MS = 180L
+    /** Never look at the screen more often than this. */
+    private const val MIN_INTERVAL_MS = 400L
     /** Long enough to land somewhere else before we look again. */
     private const val LEAVE_COOLDOWN_MS = 4000L
   }
 
   private val handler = Handler(Looper.getMainLooper())
-  private val evaluate = Runnable { evaluateScreen() }
 
+  /**
+   * Runs the check and swallows anything it throws.
+   *
+   * An exception escaping this Runnable kills the process on the main thread,
+   * which takes the service down with it — the symptom being a shield that
+   * appears once and then never again. Whatever happens, the service stays up
+   * and the reason is written down where the owner can read it.
+   */
+  private val evaluate = Runnable {
+    scheduled = false
+    lastEvaluate = System.currentTimeMillis()
+
+    try {
+      evaluateScreen()
+    } catch (error: Throwable) {
+      RegainRules.recordError(this, error.toString())
+      hide()
+    }
+  }
+
+  private var scheduled = false
+  private var lastEvaluate = 0L
   private var overlay: View? = null
   private var overlayKey: String? = null
   private var cooldownUntil = 0L
@@ -58,10 +81,19 @@ class RegainAccessibilityService : AccessibilityService() {
       return
     }
 
-    // Apps emit bursts of events while a screen animates in. Waiting for the
-    // burst to finish means we read a settled tree instead of a half-built one.
-    handler.removeCallbacks(evaluate)
-    handler.postDelayed(evaluate, SETTLE_MS)
+    // Leading-edge throttle, not a debounce.
+    //
+    // Re-arming the timer on every event looks tidier, but a playing feed emits
+    // an event every few milliseconds, so the check was cancelled and postponed
+    // forever and the shield stopped appearing — exactly the "it works when you
+    // open the app, then it stops caring" report. Now the first event schedules
+    // one check and later events fall through until it has run.
+    if (scheduled) return
+    scheduled = true
+
+    val sinceLast = System.currentTimeMillis() - lastEvaluate
+    val delay = maxOf(SETTLE_MS, MIN_INTERVAL_MS - sinceLast)
+    handler.postDelayed(evaluate, delay)
   }
 
   override fun onInterrupt() {
@@ -136,13 +168,18 @@ class RegainAccessibilityService : AccessibilityService() {
     val match = Surfaces.match(appId, tree, blocked)
 
     // Remember what was seen, whether or not it was blocked. This is the only
-    // way to correct the recogniser for a version of an app we cannot run.
+    // way to correct the recogniser for a version of an app we cannot run, and
+    // it is what the owner sends when a screen is not being caught.
     RegainRules.recordSighting(
       this,
-      if (match == null) {
-        "$appId · nothing matched · ${tree.tokens.take(10).joinToString(", ")}"
-      } else {
-        "$appId · ${match.sectionId} · ${match.token}"
+      buildString {
+        append(appId)
+        if (match == null) {
+          append(" · not blocked")
+        } else {
+          append(" · ").append(match.sectionId).append(" · ").append(match.token)
+        }
+        append(" · ids: ").append(Surfaces.describe(tree))
       }
     )
 

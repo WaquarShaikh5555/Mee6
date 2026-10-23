@@ -65,7 +65,8 @@ class RegainModule : Module() {
       mapOf(
         "summary" to (RegainRules.sighting(context) ?: ""),
         "at" to RegainRules.sightingAt(context),
-        "today" to RegainRules.todayCount(context)
+        "today" to RegainRules.todayCount(context),
+        "error" to (RegainRules.lastError(context) ?: "")
       )
     }
 

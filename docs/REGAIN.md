@@ -154,6 +154,18 @@ Done:
 3. ✅ A shield drawn over the blocked surface, with the same copy as the in-app preview.
 4. ✅ A signed APK built and published by CI on every push, with a stable download URL.
 
+Two reported failures, and what caused them:
+
+- **"It works the moment I open the app, then it stops caring."** The service
+  re-armed its timer on every accessibility event. A playing feed emits an event
+  every few milliseconds, so the check was cancelled and postponed forever and
+  never ran. It is a leading-edge throttle now: one check is scheduled, later
+  events fall through, and nothing can starve it.
+- **Nothing matched at all.** An earlier version vetoed a match when a "feed"
+  marker was on screen and demanded the matched view cover 60% of the display.
+  Both were guesses; both vetoed the screens they were meant to catch. The
+  matching is back to view ids alone, and the tree is walked once per check.
+
 Notes from the first real device:
 
 - A reel inside Instagram's home feed matched the Reels player, so leaving Reels and

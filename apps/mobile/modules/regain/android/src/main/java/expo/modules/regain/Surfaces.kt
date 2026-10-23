@@ -10,106 +10,73 @@ import android.view.accessibility.AccessibilityNodeInfo
  * and its content description. Those names are the only reliable signal we get
  * — the visible text belongs to other people's posts, so it is never read.
  *
- * Three rules keep this from doing harm:
+ * Two rules keep this honest:
  *
  *  1. **Only a positive match blocks.** No match, no block. If an app updates
  *     and renames its views, Regain stops recognising that screen and does
  *     nothing; it does not start guessing.
  *  2. **A section must be on the list the person chose.** Recognising Reels is
  *     not the same as closing it.
- *  3. **A feed is not a player.** A reel inside the home feed matched the
- *     Reels player for real, which is why opening Instagram's home after
- *     leaving Reels showed the shield again. Sections marked `fullScreen` now
- *     have to cover most of the display, and a small list of feed markers
- *     vetoes the match outright.
  *
- * The tables below are the calibration point. They were written against the
- * view names these apps are known to use, and are expected to be adjusted after
- * watching a real device — which is why they live in one obvious place, and why
- * the service records what it last saw.
+ * An earlier version also refused to match when a "feed" marker was present and
+ * required the matched view to cover most of the screen. Both were guesses, and
+ * both were wrong: they vetoed the very screens they were meant to protect, so
+ * nothing fired at all. What remains is the only thing with evidence behind it
+ * — the view id — plus a record of what was actually on screen, so the tables
+ * can be corrected from a real phone instead of from memory.
  */
 object Surfaces {
 
-  /** What a section looks like in the view tree. */
-  private data class Rule(
-    /** Fragments of a view id that identify the surface. */
-    val tokens: List<String>,
-    /** If any of these are on screen, this is not that surface. */
-    val absent: List<String> = emptyList(),
-    /** The real player covers the screen; a card in a feed does not. */
-    val fullScreen: Boolean = false
-  )
-
-  private val RULES: Map<String, Map<String, Rule>> = mapOf(
+  /** Sections of the catalog whose views we can recognise today. */
+  private val TOKENS: Map<String, Map<String, List<String>>> = mapOf(
     "instagram" to mapOf(
       // Instagram calls Reels "clips" internally.
-      "reels" to Rule(
-        tokens = listOf("clips_viewer", "clips_swipe", "reel_viewer"),
-        absent = listOf("feed_timeline", "main_feed", "direct_inbox", "direct_thread"),
-        fullScreen = true
-      ),
-      "explore" to Rule(
-        tokens = listOf("explore_tab", "explore_grid", "explore_fragment"),
-        absent = listOf("direct_inbox", "direct_thread")
-      ),
-      "feed" to Rule(
-        tokens = listOf("feed_timeline", "main_feed"),
-        absent = listOf("direct_inbox", "direct_thread")
-      )
+      "reels" to listOf("clips_viewer", "clips_swipe", "reel_viewer", "clips_media"),
+      "explore" to listOf("explore_tab", "explore_grid", "explore_fragment"),
+      "feed" to listOf("feed_timeline", "main_feed", "newsfeed", "feed_recycler", "row_feed")
     ),
     "youtube" to mapOf(
-      "shorts" to Rule(
-        tokens = listOf("reel_watch_fragment", "reel_player", "reel_recycler", "shorts_fragment"),
-        fullScreen = true
-      )
+      "shorts" to listOf("reel_watch_fragment", "reel_player", "reel_recycler", "shorts_fragment"),
+      "home" to listOf("home_tab", "browse_fragment")
     ),
     "snapchat" to mapOf(
-      "camera" to Rule(
-        tokens = listOf("camera_container", "camera_view", "camera_page", "camera_surface"),
-        absent = listOf("chat_list", "conversation_list")
-      ),
-      "spotlight" to Rule(tokens = listOf("spotlight"))
+      "camera" to listOf("camera_container", "camera_view", "camera_page", "camera_surface"),
+      "spotlight" to listOf("spotlight")
     ),
     // TikTok's For You and Following tabs are the same layout with a different
-    // selected tab, and its ids change with every release. Nothing is claimed
-    // until that can be detected without guessing.
+    // selected tab, and its ids change with every release.
     "tiktok" to mapOf(),
     "discord" to mapOf(
-      "servers" to Rule(
-        tokens = listOf("guilds_list", "guild_list", "guild_item"),
-        absent = listOf("dm_list", "private_channels")
-      ),
-      "discovery" to Rule(tokens = listOf("guild_discovery", "discovery_item"))
+      "servers" to listOf("guilds_list", "guild_list", "guild_item"),
+      "discovery" to listOf("guild_discovery", "discovery_item")
     ),
     "x" to mapOf(
-      "timeline" to Rule(
-        tokens = listOf("home_timeline", "timeline_recycler"),
-        absent = listOf("messages_list", "dm_list")
-      ),
-      "explore" to Rule(tokens = listOf("explore_tab", "trends_list"))
+      "timeline" to listOf("home_timeline", "timeline_recycler"),
+      "explore" to listOf("explore_tab", "trends_list")
     )
   )
 
-  private const val MAX_NODES = 600
-  private const val TALL_ENOUGH = 0.6f
+  private const val MAX_NODES = 900
 
-  /** Everything read from one screen, already reduced to what matters. */
+  /**
+   * Everything read from one screen.
+   *
+   * `heights` maps a view id to the largest fraction of the display that any
+   * node with that id occupied. It is not used to decide anything — it is what
+   * makes a report from a phone readable, and what will let the tables below be
+   * replaced with facts.
+   */
   data class Tree(
-    /** View ids and content descriptions present, lowercased. */
     val tokens: Set<String>,
-    /** Ids belonging to a view that covers most of the display. */
-    val tallTokens: Set<String>
+    val heights: Map<String, Float>
   )
 
   data class Match(val sectionId: String, val token: String)
 
-  /**
-   * Walks the tree once and keeps two things: every id/description on screen,
-   * and which of those ids belong to something nearly full-height.
-   */
+  /** Walks the tree once, collecting ids, descriptions, and how tall they were. */
   fun collect(root: AccessibilityNodeInfo, screenHeight: Int): Tree {
     val tokens = mutableSetOf<String>()
-    val tall = mutableSetOf<String>()
+    val heights = mutableMapOf<String, Float>()
     val queue = ArrayDeque<AccessibilityNodeInfo>()
     queue.addLast(root)
 
@@ -128,7 +95,8 @@ object Surfaces {
 
           if (screenHeight > 0) {
             node.getBoundsInScreen(bounds)
-            if (bounds.height() >= screenHeight * TALL_ENOUGH) tall.add(key)
+            val ratio = bounds.height().toFloat() / screenHeight.toFloat()
+            if (ratio > (heights[key] ?: 0f)) heights[key] = ratio
           }
         }
       }
@@ -142,29 +110,39 @@ object Surfaces {
       }
     }
 
-    return Tree(tokens, tall)
+    return Tree(tokens, heights)
   }
 
-  /** The first blocked section present on screen, or null. */
+  /** The first section on screen that the person asked to close, or null. */
   fun match(appId: String, tree: Tree, blocked: Set<String>): Match? {
-    val sections = RULES[appId] ?: return null
+    val sections = TOKENS[appId] ?: return null
 
-    for ((sectionId, rule) in sections) {
+    for ((sectionId, needles) in sections) {
       if (!blocked.contains(sectionId)) continue
-      if (rule.absent.any { marker -> tree.tokens.any { it.contains(marker) } }) continue
 
-      val hit = rule.tokens.firstOrNull { needle ->
+      val hit = needles.firstOrNull { needle ->
         tree.tokens.any { token -> token.contains(needle) }
       } ?: continue
-
-      if (rule.fullScreen) {
-        val coversScreen = tree.tallTokens.any { it.contains(hit) }
-        if (!coversScreen) continue
-      }
 
       return Match(sectionId, hit)
     }
 
     return null
   }
+
+  /**
+   * A short, readable account of the screen: which ids were on it and how much
+   * of the display each covered. Sent by the owner when a surface is not being
+   * recognised, so the tables can be corrected against the real app.
+   */
+  fun describe(tree: Tree, limit: Int = 24): String =
+    tree.tokens
+      .asSequence()
+      .filter { it.length in 3..48 && it.none { char -> char.isWhitespace() } }
+      .sorted()
+      .take(limit)
+      .joinToString(", ") { token ->
+        val ratio = tree.heights[token]
+        if (ratio == null) token else "$token ${(ratio * 100).toInt()}%"
+      }
 }

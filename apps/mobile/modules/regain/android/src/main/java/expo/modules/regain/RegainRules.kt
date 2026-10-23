@@ -26,6 +26,7 @@ object RegainRules {
   private const val KEY_COUNT = "count"
   private const val KEY_SIGHTING = "sighting"
   private const val KEY_SIGHTING_AT = "sighting_at"
+  private const val KEY_ERROR = "last_error"
 
   data class Snapshot(val enabled: Boolean, val rules: Map<String, Set<String>>)
 
@@ -102,12 +103,19 @@ object RegainRules {
     lastWrite = now
 
     prefs(context).edit()
-      .putString(KEY_SIGHTING, summary.take(400))
+      .putString(KEY_SIGHTING, summary.take(1200))
       .putLong(KEY_SIGHTING_AT, now)
       .apply()
   }
 
   fun sighting(context: Context): String? = prefs(context).getString(KEY_SIGHTING, null)
+
+  /** The last exception that escaped the service, if any. */
+  fun recordError(context: Context, message: String) {
+    prefs(context).edit().putString(KEY_ERROR, message.take(300)).apply()
+  }
+
+  fun lastError(context: Context): String? = prefs(context).getString(KEY_ERROR, null)
 
   fun sightingAt(context: Context): Long = prefs(context).getLong(KEY_SIGHTING_AT, 0L)
 
