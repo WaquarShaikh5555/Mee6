@@ -36,7 +36,8 @@ object ShieldScreen {
     onLeave: () -> Unit
   ): View {
     val scale = context.resources.displayMetrics.density
-    fun dp(value: Int): Int = (value * scale).toInt()
+    // A value, not a function: it is handed to the helpers below.
+    val dp: (Int) -> Int = { value -> (value * scale).toInt() }
 
     val root = FrameLayout(context).apply {
       setBackgroundColor(BACKGROUND)
