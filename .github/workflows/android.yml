@@ -76,7 +76,8 @@ jobs:
       - name: Build the APK
         run: |
           set -o pipefail
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee -a build.log
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee -a ../build.log
 
       - name: Check the build
         run: |
