@@ -58,6 +58,7 @@ jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { 
 jest.mock('expo-system-ui', () => ({ setBackgroundColorAsync: jest.fn().mockResolvedValue(undefined) }));
 
 import { AuthProvider } from '@/auth/AuthProvider';
+import { RegainProvider } from '@/regain/RegainProvider';
 import { demoAuthService } from '@/auth/demoAuthService';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 
@@ -74,7 +75,9 @@ import WelcomeScreen from '@/app/(auth)/welcome';
 function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <RegainProvider>{children}</RegainProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
@@ -217,8 +220,16 @@ describe('app screens', () => {
 
     expect(await screen.findByText('Waquar', undefined, { timeout: 3000 })).toBeTruthy();
     expect(screen.getByText('Foundation complete')).toBeTruthy();
-    expect(screen.getByText('Your first feature')).toBeTruthy();
+    expect(screen.getByText('Regain — your first feature')).toBeTruthy();
     expect(screen.getByText('Signed in as waquar@example.com')).toBeTruthy();
+  });
+
+  it('home leads with Regain and opens it', async () => {
+    await seedSession();
+    await renderScreen(<HomeScreen />);
+
+    await fireEvent.press(await screen.findByLabelText('Open Regain'));
+    expect(mockPush).toHaveBeenCalledWith('/regain');
   });
 
   it('home routes to design and settings', async () => {

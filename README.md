@@ -14,13 +14,18 @@ Two things live here:
 Expo + React Native + TypeScript on the client. Accounts and data live in Supabase
 (hosted PostgreSQL) — no server to deploy, no card required.
 
+**First feature: Regain.** A dashboard button opens a screen that closes the compulsive parts
+of social apps — Reels, Shorts, Spotlight — while leaving messages and anything someone chose
+to send you open. Rules and the block screen are built and tested
+([docs/REGAIN.md](docs/REGAIN.md)); the in-app interception needs a native build.
+
 ```bash
 cd apps/mobile
 npm install
 npx expo start
 ```
 
-Real authentication is wired up and tested (109 tests). Set the two `EXPO_PUBLIC_SUPABASE_*`
+Real authentication is wired up and tested (139 tests). Set the two `EXPO_PUBLIC_SUPABASE_*`
 values from [apps/mobile/.env.example](apps/mobile/.env.example) in `apps/mobile/.env`;
 without them the app falls back to an on-device demo service so screens stay usable.
 

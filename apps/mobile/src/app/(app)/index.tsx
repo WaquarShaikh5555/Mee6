@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { useRegain } from '@/regain/RegainProvider';
 import { Badge } from '@/ui/Badge';
 import { Card } from '@/ui/Card';
 import { Divider } from '@/ui/Divider';
@@ -23,13 +24,14 @@ const FOUNDATION = [
   { label: 'Design tokens and both themes', done: true },
   { label: 'Navigation and route guards', done: true },
   { label: 'Accounts, sessions, secure storage', done: true },
-  { label: 'Your first feature', done: false },
+  { label: 'Regain — your first feature', done: true },
 ] as const;
 
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user, isDemoMode } = useAuth();
+  const { enabled: regainEnabled, blockedSectionCount, todayCount } = useRegain();
 
   return (
     <Screen gutter="lg">
@@ -72,7 +74,71 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Regain is the first real feature, so it leads the dashboard rather
+          than sitting in a list. It states its own state at a glance. */}
+      <Pressable
+        onPress={() => router.push('/regain')}
+        accessibilityRole="button"
+        accessibilityLabel={
+          regainEnabled
+            ? `Regain is on, ${blockedSectionCount} sections blocked. Open Regain.`
+            : 'Open Regain'
+        }
+        style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+      >
+        <Card
+          style={{
+            gap: theme.space.md,
+            backgroundColor: regainEnabled ? theme.colors.accentSubtle : theme.colors.surface,
+            borderColor: regainEnabled ? theme.colors.accentBorder : theme.colors.separator,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: theme.radius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: regainEnabled ? theme.colors.accent : theme.colors.surfaceSunken,
+              }}
+            >
+              <Ionicons
+                name={regainEnabled ? 'shield-checkmark' : 'shield-outline'}
+                size={22}
+                color={regainEnabled ? theme.colors.onAccent : theme.colors.textTertiary}
+              />
+            </View>
+
+            <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
+                <Text variant="headline" tone={regainEnabled ? 'onAccentSubtle' : 'primary'}>
+                  Regain
+                </Text>
+                {regainEnabled ? <Badge label="On" tone="accent" /> : null}
+              </View>
+              <Text
+                variant="footnote"
+                tone={regainEnabled ? 'onAccentSubtle' : 'tertiary'}
+                numberOfLines={2}
+              >
+                {regainEnabled
+                  ? `${blockedSectionCount} ${blockedSectionCount === 1 ? 'section' : 'sections'} blocked${todayCount > 0 ? ` · ${todayCount} today` : ''}`
+                  : 'Keep the DMs. Lose the Reels scroll.'}
+              </Text>
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={regainEnabled ? theme.colors.onAccentSubtle : theme.colors.textTertiary}
+            />
+          </View>
+        </Card>
+      </Pressable>
+
+      <Card style={{ padding: 0, overflow: 'hidden', marginTop: theme.space['2xl'] }}>
         <View
           style={{
             padding: theme.space.lg,

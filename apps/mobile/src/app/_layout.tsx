@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { RegainProvider } from '@/regain/RegainProvider';
 import { ThemeProvider, useTheme, useThemeController } from '@/theme/ThemeProvider';
 import { Text } from '@/ui/Text';
 import { Wordmark } from '@/ui/Wordmark';
@@ -71,7 +72,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <RootNavigator />
+          <RegainProvider>
+            <RootNavigator />
+          </RegainProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
