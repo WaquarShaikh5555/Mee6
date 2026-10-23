@@ -69,10 +69,14 @@ jobs:
         run: npm run verify
 
       - name: Generate the Android project
-        run: npx expo prebuild --platform android --no-install --clean
+        run: |
+          set -o pipefail
+          npx expo prebuild --platform android --no-install --clean 2>&1 | tee build.log
 
       - name: Build the APK
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee -a build.log
 
       - name: Check the build
         run: |
@@ -115,6 +119,17 @@ jobs:
               --notes-file release-notes.md
           fi
           echo "https://github.com/${GITHUB_REPOSITORY}/releases/download/apk/shaikhs.apk"
+
+      # The build logs cannot be fetched from outside; when something breaks,
+      # the tail is posted onto the commit so it can be read and acted on.
+      - name: Report a failure on the commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tail -c 40000 build.log > failure.txt 2>/dev/null || echo "no build log" > failure.txt
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -f body="$(printf '```\n%s\n```' "$(cat failure.txt)")" || true
 
       - name: Keep the APK as an artifact too
         if: always()
