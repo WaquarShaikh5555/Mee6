@@ -55,6 +55,9 @@ function RootNavigator() {
       >
         <Stack.Screen name="(app)" />
         <Stack.Screen name="(auth)" />
+        {/* Outside both groups: reachable before signing up as well as after,
+            because agreeing to them is part of creating an account. */}
+        <Stack.Screen name="legal/[doc]" />
       </Stack>
     </>
   );

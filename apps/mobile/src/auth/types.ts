@@ -12,6 +12,11 @@ export type AuthUser = {
   email: string;
   displayName: string;
   createdAt: string;
+  /**
+   * Server-granted, never self-assigned: the row's `is_admin` column, which
+   * clients are not permitted to write. Absent means an ordinary account.
+   */
+  isAdmin?: boolean;
 };
 
 export type Session = {

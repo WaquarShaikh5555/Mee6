@@ -6,8 +6,6 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useRegain } from '@/regain/RegainProvider';
 import { Badge } from '@/ui/Badge';
 import { Card } from '@/ui/Card';
-import { Divider } from '@/ui/Divider';
-import { ListRow } from '@/ui/ListRow';
 import { Screen } from '@/ui/Screen';
 import { Text } from '@/ui/Text';
 import { Wordmark } from '@/ui/Wordmark';
@@ -19,13 +17,6 @@ function greeting(): string {
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
 }
-
-const FOUNDATION = [
-  { label: 'Design tokens and both themes', done: true },
-  { label: 'Navigation and route guards', done: true },
-  { label: 'Accounts, sessions, secure storage', done: true },
-  { label: 'Regain — your first feature', done: true },
-] as const;
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -69,8 +60,9 @@ export default function HomeScreen() {
         </Text>
         <Text variant="title1">{user?.displayName ?? 'There'}</Text>
         <Text variant="body" tone="secondary">
-          Your space is set up. The features come next — this is the part where you decide what
-          Shaikh’s becomes.
+          {regainEnabled
+            ? 'Regain is watching the parts you closed. Everything else stays where it was.'
+            : 'One switch closes the endless parts of Instagram, YouTube and the rest.'}
         </Text>
       </View>
 
@@ -138,78 +130,20 @@ export default function HomeScreen() {
         </Card>
       </Pressable>
 
-      <Card style={{ padding: 0, overflow: 'hidden', marginTop: theme.space['2xl'] }}>
-        <View
-          style={{
-            padding: theme.space.lg,
-            gap: theme.space.sm,
-            backgroundColor: theme.colors.accentSubtle,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text variant="headline" tone="onAccentSubtle">
-              Foundation complete
-            </Text>
-            <Badge label="Step 1" tone="accent" />
-          </View>
-          <Text variant="footnote" tone="onAccentSubtle">
-            Everything below is in place and verified.
+      <Card style={{ marginTop: theme.space['2xl'], gap: theme.space.xs }}>
+        <Text variant="subhead" tone="secondary">
+          Today
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: theme.space.sm }}>
+          <Text variant="display">{String(todayCount)}</Text>
+          <Text variant="footnote" tone="tertiary">
+            {todayCount === 1 ? 'time you stepped away' : 'times you stepped away'}
           </Text>
         </View>
-
-        <View style={{ paddingVertical: theme.space.sm }}>
-          {FOUNDATION.map((item, index) => (
-            <View key={item.label}>
-              {index > 0 ? <Divider inset={theme.space.lg} /> : null}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: theme.space.md,
-                  paddingHorizontal: theme.space.lg,
-                  paddingVertical: theme.space.md,
-                }}
-              >
-                <Ionicons
-                  name={item.done ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={20}
-                  color={item.done ? theme.colors.success : theme.colors.textTertiary}
-                />
-                <Text variant="callout" tone={item.done ? 'primary' : 'tertiary'}>
-                  {item.label}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
-        <Text variant="subhead" tone="secondary">
-          Explore
+        <Text variant="caption" tone="tertiary">
+          Counted on this phone. Nothing is uploaded.
         </Text>
-        <Card padded={false} style={{ overflow: 'hidden' }}>
-          <ListRow
-            title="Design system"
-            subtitle="Colours, type, spacing and components"
-            icon="color-palette-outline"
-            onPress={() => router.push('/design')}
-          />
-          <Divider inset={theme.space.lg + 32 + theme.space.md} />
-          <ListRow
-            title="Settings"
-            subtitle="Appearance and account"
-            icon="options-outline"
-            onPress={() => router.push('/settings')}
-          />
-        </Card>
-      </View>
+      </Card>
 
       <View style={{ paddingTop: theme.space['2xl'], gap: theme.space.xs }}>
         <Text variant="caption" tone="tertiary">

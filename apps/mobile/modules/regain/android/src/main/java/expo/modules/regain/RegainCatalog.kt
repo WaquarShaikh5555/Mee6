@@ -60,6 +60,16 @@ object RegainCatalog {
     )
   )
 
+  /**
+   * Where "Leave" should put the person, when an app has a place that is
+   * obviously better than the screen they were stuck on. Instagram's Reels
+   * viewer has no DMs on it, so leaving to the inbox is the only useful exit.
+   */
+  private val ESCAPE: Map<String, Pair<String, String>> = mapOf(
+    "instagram" to ("instagram://direct-inbox" to "Go to DMs"),
+    "x" to ("twitter://messages" to "Go to DMs")
+  )
+
   /** Every package the app asks about, for `detectInstalled()`. */
   val allPackages: List<String> = PACKAGES.keys.toList()
 
@@ -69,4 +79,8 @@ object RegainCatalog {
 
   fun sectionName(appId: String, sectionId: String): String =
     SECTION_NAMES[appId]?.get(sectionId) ?: sectionId
+
+  fun escapeUri(appId: String): String? = ESCAPE[appId]?.first
+
+  fun escapeLabel(appId: String): String = ESCAPE[appId]?.second ?: "Leave" 
 }

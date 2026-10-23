@@ -2,6 +2,8 @@ import Constants from 'expo-constants';
 import { useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
 
+import { useRouter } from 'expo-router';
+
 import { useAuth } from '@/auth/AuthProvider';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
@@ -18,6 +20,7 @@ const ROW_INSET = 16 + 32 + 12;
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { preference, setPreference } = useThemeController();
   const { user, signOut, isSubmitting, isDemoMode } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
@@ -83,6 +86,39 @@ export default function SettingsScreen() {
             { value: 'dark', label: 'Dark' },
           ]}
         />
+      </View>
+
+      {user?.isAdmin ? (
+        <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
+          <Text variant="title3">Owner</Text>
+          <Card padded={false} style={{ overflow: 'hidden' }}>
+            <ListRow
+              title="Developer options"
+              subtitle="Diagnostics, what Regain sees, and shared tools"
+              icon="construct-outline"
+              onPress={() => router.push('/developer')}
+            />
+          </Card>
+        </View>
+      ) : null}
+
+      <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
+        <Text variant="title3">Legal</Text>
+        <Card padded={false} style={{ overflow: 'hidden' }}>
+          <ListRow
+            title="Privacy policy"
+            subtitle="What is kept, and what never leaves your phone"
+            icon="lock-closed-outline"
+            onPress={() => router.push('/legal/privacy')}
+          />
+          <Divider inset={ROW_INSET} />
+          <ListRow
+            title="Terms of use"
+            subtitle="The agreement between you and Shaikh’s"
+            icon="document-text-outline"
+            onPress={() => router.push('/legal/terms')}
+          />
+        </Card>
       </View>
 
       <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>

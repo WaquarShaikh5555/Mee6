@@ -12,7 +12,12 @@
  *  - Row access is enforced by RLS policies on the server, not by the client.
  */
 
-import type { AuthError as SupabaseAuthError, Session as SupabaseSession, User } from '@supabase/supabase-js';
+import type {
+  AuthError as SupabaseAuthError,
+  Session as SupabaseSession,
+  SupabaseClient,
+  User,
+} from '@supabase/supabase-js';
 
 import { getSupabaseClient } from './supabaseClient';
 import {
@@ -39,6 +44,31 @@ function displayNameOf(user: User): string {
   // Rows created before the metadata convention existed, or OAuth sign-ups.
   const email = user.email ?? '';
   return email.includes('@') ? email.slice(0, email.indexOf('@')) : 'Friend';
+}
+
+/**
+ * Adds the one piece of authorisation the database owns rather than the token:
+ * whether this account is the project owner.
+ *
+ * It is read from `profiles`, where clients have no permission to write the
+ * column, so a build cannot talk itself into being an admin. A failed read is
+ * treated as "no" — the safe direction.
+ */
+async function withRole(client: SupabaseClient, user: User): Promise<AuthUser> {
+  const base = toAuthUser(user);
+
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error || !data) return base;
+    return { ...base, isAdmin: (data as { is_admin?: boolean | null }).is_admin === true };
+  } catch {
+    return base;
+  }
 }
 
 function toAuthUser(user: User): AuthUser {
@@ -87,10 +117,13 @@ function toAuthError(error: SupabaseError): AuthError {
   return new AuthError('unknown', message || 'Something went wrong. Try again.');
 }
 
-function toSession(session: SupabaseSession): Session {
+async function toSession(
+  client: SupabaseClient,
+  session: SupabaseSession,
+): Promise<Session> {
   return {
     token: session.access_token,
-    user: toAuthUser(session.user),
+    user: await withRole(client, session.user),
     expiresAt: new Date((session.expires_at ?? 0) * 1000).toISOString(),
   };
 }
@@ -116,7 +149,7 @@ export const supabaseAuthService: AuthService = {
       );
     }
 
-    return toSession(data.session);
+    return toSession(getSupabaseClient(), data.session);
   },
 
   async signIn(input: SignInInput): Promise<Session> {
@@ -130,7 +163,7 @@ export const supabaseAuthService: AuthService = {
       throw new AuthError('unknown', 'Sign-in did not return a session. Try again.');
     }
 
-    return toSession(data.session);
+    return toSession(getSupabaseClient(), data.session);
   },
 
   async signOut(): Promise<void> {
@@ -162,7 +195,7 @@ export const supabaseAuthService: AuthService = {
 
     return {
       token: data.session.access_token,
-      user: toAuthUser(userData.user),
+      user: await withRole(client, userData.user),
       expiresAt: new Date((data.session.expires_at ?? 0) * 1000).toISOString(),
     };
   },

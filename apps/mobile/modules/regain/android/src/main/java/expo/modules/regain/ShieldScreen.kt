@@ -99,7 +99,7 @@ object ShieldScreen {
     )
 
     column.addView(
-      button(context, "Leave", dp, onLeave).apply {
+      button(context, RegainCatalog.escapeLabel(appId), dp, onLeave).apply {
         val params = LinearLayout.LayoutParams(
           LinearLayout.LayoutParams.WRAP_CONTENT,
           LinearLayout.LayoutParams.WRAP_CONTENT

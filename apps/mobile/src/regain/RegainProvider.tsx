@@ -7,6 +7,8 @@
  * preview).
  */
 
+import { AppState } from 'react-native';
+
 import {
   createContext,
   useCallback,
@@ -21,7 +23,7 @@ import {
 import { storage } from '@/lib/storage';
 
 import { findApp, type RegainApp } from './catalog';
-import { syncRules } from './enforcement';
+import { getLastSighting, syncRules } from './enforcement';
 import {
   activeApps,
   blockedSectionsFor,
@@ -60,6 +62,13 @@ const RegainContext = createContext<RegainContextValue | null>(null);
 export function RegainProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RegainState>(createDefaultState);
   const [isReady, setIsReady] = useState(false);
+
+  /**
+   * The phone counts encounters itself — it has to, because it is watching
+   * while this app is closed. The two counts are reconciled by taking the
+   * larger, so neither the preview route nor the real shield can under-report.
+   */
+  const [nativeToday, setNativeToday] = useState(0);
 
   /**
    * Set by any change made before the stored state finished loading.
@@ -108,6 +117,26 @@ export function RegainProvider({ children }: { children: ReactNode }) {
     void syncRules(rules, state.enabled);
   }, [isReady, state]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const read = async () => {
+      const sighting = await getLastSighting();
+      if (!cancelled && sighting) setNativeToday(sighting.today);
+    };
+
+    void read();
+
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void read();
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.remove();
+    };
+  }, []);
+
   const setEnabled = useCallback((enabled: boolean) => {
     changedBeforeLoad.current = true;
     setState((current) => setEnabledPure(current, enabled));
@@ -153,7 +182,9 @@ export function RegainProvider({ children }: { children: ReactNode }) {
       state,
       apps: activeApps(state),
       blockedSectionCount: totalBlockedSections(state),
-      todayCount: interventionsToday(state),
+      // The phone counts what it blocked while this app was closed; the
+      // preview route counts its own arrivals. Whichever is larger is the truth.
+      todayCount: Math.max(interventionsToday(state), nativeToday),
       setEnabled,
       toggleSection,
       isBlocked,
@@ -164,6 +195,7 @@ export function RegainProvider({ children }: { children: ReactNode }) {
     [
       isReady,
       state,
+      nativeToday,
       setEnabled,
       toggleSection,
       isBlocked,

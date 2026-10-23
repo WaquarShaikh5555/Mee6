@@ -169,7 +169,19 @@ export default function SignUpScreen() {
         </View>
 
         <Text variant="caption" tone="tertiary" align="center">
-          By continuing you agree to keep this a place worth returning to.
+          By creating an account you agree to the {''}
+          <Link href="/legal/terms">
+            <Text variant="caption" tone="accent">
+              Terms of use
+            </Text>
+          </Link>{' '}
+          and the{' '}
+          <Link href="/legal/privacy">
+            <Text variant="caption" tone="accent">
+              Privacy policy
+            </Text>
+          </Link>
+          .
         </Text>
       </View>
     </Screen>

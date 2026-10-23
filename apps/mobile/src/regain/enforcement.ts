@@ -35,8 +35,19 @@ export type EnforcementStatus = {
  * a future build has to implement; nothing in the JS bundle calls it yet, so
  * importing it would throw rather than silently doing nothing.
  */
+/** What the phone last recognised, for tuning the detector on a real device. */
+export type Sighting = {
+  /** e.g. "instagram · reels · clips_viewer", or "nothing matched · …". */
+  summary: string;
+  /** Unix milliseconds, 0 when nothing has been seen yet. */
+  at: number;
+  /** Encounters on the phone today, counted natively. */
+  today: number;
+};
+
 export type RegainNativeModule = {
   getStatus(): Promise<EnforcementStatus>;
+  getSighting(): Promise<Sighting>;
   /** Opens the OS settings page where the service or permission is granted. */
   openSettings(): Promise<void>;
   /** Android package names, or iOS URL schemes, that are installed. */
@@ -112,6 +123,21 @@ export function explanationFor(status: EnforcementStatus): string {
 /** No-ops until a native module exists; kept so callers never branch on it. */
 export async function openEnforcementSettings(): Promise<void> {
   await nativeModule()?.openSettings().catch(() => undefined);
+}
+
+/**
+ * The phone's own count and last sighting. Returns null in the preview, where
+ * there is no service watching anything.
+ */
+export async function getLastSighting(): Promise<Sighting | null> {
+  const mod = nativeModule();
+  if (!mod) return null;
+
+  try {
+    return await mod.getSighting();
+  } catch {
+    return null;
+  }
 }
 
 export async function syncRules(

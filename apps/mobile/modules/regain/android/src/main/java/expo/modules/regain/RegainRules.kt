@@ -24,6 +24,8 @@ object RegainRules {
   private const val KEY_PAYLOAD = "payload"
   private const val KEY_DAY = "day"
   private const val KEY_COUNT = "count"
+  private const val KEY_SIGHTING = "sighting"
+  private const val KEY_SIGHTING_AT = "sighting_at"
 
   data class Snapshot(val enabled: Boolean, val rules: Map<String, Set<String>>)
 
@@ -82,6 +84,32 @@ object RegainRules {
     store.edit().putString(KEY_DAY, today).putInt(KEY_COUNT, count).apply()
     return count
   }
+
+  @Volatile
+  private var lastWrite = 0L
+
+  /**
+   * Records the last classification, so the app can show what Regain actually
+   * saw. Without this, tuning the recogniser for a new app version would be
+   * guesswork in both directions.
+   *
+   * Throttled: the service looks at the screen several times a second, and this
+   * is for a person to read, not a log.
+   */
+  fun recordSighting(context: Context, summary: String) {
+    val now = System.currentTimeMillis()
+    if (now - lastWrite < 3000L) return
+    lastWrite = now
+
+    prefs(context).edit()
+      .putString(KEY_SIGHTING, summary.take(400))
+      .putLong(KEY_SIGHTING_AT, now)
+      .apply()
+  }
+
+  fun sighting(context: Context): String? = prefs(context).getString(KEY_SIGHTING, null)
+
+  fun sightingAt(context: Context): Long = prefs(context).getLong(KEY_SIGHTING_AT, 0L)
 
   fun todayCount(context: Context): Int {
     val store = prefs(context)

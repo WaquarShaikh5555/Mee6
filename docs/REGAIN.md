@@ -43,9 +43,13 @@ Where a surface is blocked, the person sees one screen:
 
 > **Make yourself better.**
 
-with what was blocked, how many times today, and a button that requires a two-second hold to
-switch Regain off. Friction, not a lock — the point is that turning it off becomes a
-decision instead of a reflex.
+with what was blocked, how many times today, and one button. On Instagram and X that button
+reads **Go to DMs** and opens the app's messages — where someone leaving Reels actually wants
+to be, instead of the screen they were stuck on. Everywhere else it is **Leave**, which
+presses Back for them.
+
+The two-second hold still applies, but to switching Regain off in the app itself rather than
+to a tap on the overlay: the shield is a wall, the settings are where the decision lives.
 
 ---
 
@@ -62,6 +66,8 @@ Everything below is real, typed, and covered by tests (`__tests__/regain.test.ts
 | Rules catalog (6 apps, 25 sections) | `regain/catalog.ts` | Done |
 | Persistence, repair of corrupt state, daily counts | `regain/store.ts`, `regain/RegainProvider.tsx` | Done |
 | Native enforcement (Android) | `modules/regain/` | Built — accessibility service + shield |
+| Owner tools | `app/(app)/developer.tsx` | Built — diagnostics, last sighting |
+| Privacy policy and terms | `src/legal/documents.ts` | Built — in-app and in the repo |
 | APK build | `.github/workflows/android.yml` | Green; publishes to the `apk` release |
 
 Rules survive restarts, a corrupt record is repaired rather than fatal, and turning every
@@ -147,6 +153,14 @@ Done:
    survives the app being closed.
 3. ✅ A shield drawn over the blocked surface, with the same copy as the in-app preview.
 4. ✅ A signed APK built and published by CI on every push, with a stable download URL.
+
+Notes from the first real device:
+
+- A reel inside Instagram's home feed matched the Reels player, so leaving Reels and
+  landing on home showed the shield again. Sections marked `fullScreen` now have to cover
+  most of the display, and a short list of feed markers vetoes the match.
+- "Leave" put people back on the screen they came from. It now opens the app's own DMs
+  where that exists, which is where someone leaving Reels actually wants to be.
 
 Still to do, in order:
 

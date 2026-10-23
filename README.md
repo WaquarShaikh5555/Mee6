@@ -18,6 +18,10 @@ Expo + React Native + TypeScript on the client. Accounts and data live in Supaba
 of social apps — Reels, Shorts, Spotlight — while leaving messages and anything someone chose
 to send you open.
 
+**Privacy policy and terms:** built into the app (Settings → Legal) and readable at
+[docs/legal](docs/legal). Accounts, sessions, and the owner flag are audited in
+[docs/SECURITY.md](docs/SECURITY.md).
+
 **Install it on an Android phone:** [download `shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk),
 open it, allow installing from this source, then open Regain and allow it in
 Settings → Accessibility. Built by GitHub Actions on every push

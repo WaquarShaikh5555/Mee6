@@ -214,14 +214,19 @@ describe('auth screens', () => {
 });
 
 describe('app screens', () => {
-  it('home greets the signed-in user and lists the foundation', async () => {
+  it('home greets the person and shows what Regain is doing today', async () => {
     await seedSession();
     await renderScreen(<HomeScreen />);
 
     expect(await screen.findByText('Waquar', undefined, { timeout: 3000 })).toBeTruthy();
-    expect(screen.getByText('Foundation complete')).toBeTruthy();
-    expect(screen.getByText('Regain — your first feature')).toBeTruthy();
+    expect(screen.getByText('Regain')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Counted on this phone. Nothing is uploaded.')).toBeTruthy();
     expect(screen.getByText('Signed in as waquar@example.com')).toBeTruthy();
+
+    // The build's own progress does not belong on a screen a user looks at.
+    expect(screen.queryByText('Foundation complete')).toBeNull();
+    expect(screen.queryByText(/features come next/i)).toBeNull();
   });
 
   it('home leads with Regain and opens it', async () => {
@@ -232,14 +237,11 @@ describe('app screens', () => {
     expect(mockPush).toHaveBeenCalledWith('/regain');
   });
 
-  it('home routes to design and settings', async () => {
+  it('home reaches settings from the header', async () => {
     await seedSession();
     await renderScreen(<HomeScreen />);
 
-    await fireEvent.press(await screen.findByText('Design system'));
-    expect(mockPush).toHaveBeenCalledWith('/design');
-
-    await fireEvent.press(screen.getByText('Settings'));
+    await fireEvent.press(await screen.findByLabelText('Settings'));
     expect(mockPush).toHaveBeenCalledWith('/settings');
   });
 

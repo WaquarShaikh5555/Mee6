@@ -61,6 +61,14 @@ class RegainModule : Module() {
       RegainCatalog.allPackages.filter { isInstalled(it) }
     }
 
+    AsyncFunction("getSighting") {
+      mapOf(
+        "summary" to (RegainRules.sighting(context) ?: ""),
+        "at" to RegainRules.sightingAt(context),
+        "today" to RegainRules.todayCount(context)
+      )
+    }
+
     AsyncFunction("sync") { rules: List<RegainRule>, enabled: Boolean ->
       RegainRules.write(
         context,

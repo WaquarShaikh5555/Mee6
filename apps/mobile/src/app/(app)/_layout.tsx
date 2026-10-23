@@ -21,6 +21,7 @@ export default function AppLayout() {
       <Stack.Screen name="index" options={{ animation: 'fade' }} />
       <Stack.Screen name="design" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="developer" />
       <Stack.Screen name="regain/index" />
       <Stack.Screen name="regain/[appId]" />
       {/* Reaching a blocked screen should feel like a wall, not a page turn:
