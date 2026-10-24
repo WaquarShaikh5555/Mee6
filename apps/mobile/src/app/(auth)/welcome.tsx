@@ -6,6 +6,7 @@ import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 import { Text } from '@/ui/Text';
+import { BrandMark } from '@/ui/BrandMark';
 import { Wordmark } from '@/ui/Wordmark';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -17,6 +18,12 @@ export default function WelcomeScreen() {
   return (
     <Screen contentStyle={{ flexGrow: 1, justifyContent: 'space-between' }}>
       <View style={{ gap: theme.space['2xl'], paddingTop: theme.space.xl }}>
+        {/* The mark gets one uncluttered moment, before the screen asks for
+            anything. */}
+        <View style={{ alignItems: 'center', paddingTop: theme.space.xl }}>
+          <BrandMark size="xl" accessibilityLabel="Shaikh’s" />
+        </View>
+
         <View
           style={{
             flexDirection: 'row',
@@ -24,7 +31,7 @@ export default function WelcomeScreen() {
             justifyContent: 'space-between',
           }}
         >
-          <Wordmark size="md" />
+          <Wordmark size="md" mark={false} />
           {isDemoMode ? <Badge label="Preview build" tone="brass" /> : null}
         </View>
 

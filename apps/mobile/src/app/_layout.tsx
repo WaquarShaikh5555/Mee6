@@ -26,7 +26,7 @@ function Gate() {
         backgroundColor: theme.colors.canvas,
       }}
     >
-      <Wordmark size="md" />
+      <Wordmark size="lg" />
       <ActivityIndicator color={theme.colors.accent} />
       <Text variant="footnote" tone="tertiary">
         Opening your space

@@ -12,12 +12,13 @@
       "bundleIdentifier": "com.shaikhs.app",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
-      }
+      },
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.shaikhs.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0E6F6B",
+        "backgroundColor": "#090D0E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -35,7 +36,11 @@
         {
           "backgroundColor": "#F7F5EF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 132,
+          "dark": {
+            "backgroundColor": "#090D0E",
+            "image": "./assets/images/splash-icon.png"
+          }
         }
       ]
     ],

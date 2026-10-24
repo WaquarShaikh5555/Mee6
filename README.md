@@ -18,6 +18,9 @@ Expo + React Native + TypeScript on the client. Accounts and data live in Supaba
 of social apps — Reels, Shorts, Spotlight — while leaving messages and anything someone chose
 to send you open.
 
+**The mark:** a hexagon in two interlocking pieces, teal and brass. Colours, files, and how
+to regenerate them from the source artwork are in [docs/BRAND.md](docs/BRAND.md).
+
 **Privacy policy and terms:** built into the app (Settings → Legal) and readable at
 [docs/legal](docs/legal). Accounts, sessions, and the owner flag are audited in
 [docs/SECURITY.md](docs/SECURITY.md).
