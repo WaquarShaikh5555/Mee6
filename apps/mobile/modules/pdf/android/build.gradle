@@ -21,6 +21,8 @@ android {
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
+    // The release build is minified; these rules travel with the module.
+    consumerProguardFiles "consumer-rules.pro"
   }
 
   compileOptions {
