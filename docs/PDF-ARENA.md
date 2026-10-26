@@ -60,6 +60,10 @@ Three things were wrong in 0.5.0, and each was a design mistake rather than a bu
 - **An archive is not a result.** "To images" and "Extract images" used to hand back a ZIP —
   technically correct, useless on a phone. Both now write one file per picture, returned as a
   list, displayed as a gallery with a full-screen look and a share for each.
+- **Settings below the fold are settings nobody saw.** The rotate angle was on the screen but
+  under the file card, so tapping the button looked like the app choosing 90° for you. Every
+  tool now states its settings in a line directly above the button — "90° right · all pages" —
+  and the run button is always in view.
 - **A text extractor that only writes `.txt` is a file, not an extractor.** The words now come
   back with the result: readable in the card, selectable, copyable, with the `.txt` still there
   to share.

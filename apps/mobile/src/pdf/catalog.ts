@@ -626,6 +626,66 @@ export function searchTools(query: string): PdfTool[] {
 }
 
 /** Default values for a tool's options, ready to hand to the engine. */
+/**
+ * The settings, in one line, next to the button that acts on them.
+ *
+ * A tool whose options sit below the fold is a tool that appears to choose for
+ * you — "it rotated 90 on its own" was exactly that. This line is always in
+ * view, so the current choice is never a surprise.
+ */
+export function summariseOptions(tool: PdfTool, options: Record<string, string>): string {
+  // The page range goes last: it is the least surprising part, and the choice
+  // that changes the result should be the first thing in the line.
+  const range: string[] = [];
+  const parts: string[] = [];
+
+  for (const option of tool.options) {
+    if (option.kind === 'note' || option.kind === 'bookmarks' || option.kind === 'signature') {
+      continue;
+    }
+
+    const value = options[option.id] ?? '';
+
+    switch (option.kind) {
+      case 'range': {
+        const text = value.trim();
+        range.push(!text || text === 'all' || text === '*' ? 'all pages' : `pages ${text}`);
+        break;
+      }
+      case 'choice': {
+        const chosen = option.choices.find((choice) => choice.value === value) ?? option.choices[0];
+        if (chosen) parts.push(chosen.label);
+        break;
+      }
+      case 'text': {
+        if (option.secure) parts.push(value.length > 0 ? 'password set' : 'no password');
+        else if (value.trim().length > 0) parts.push(`“${value.trim().slice(0, 24)}”`);
+        break;
+      }
+      case 'number': {
+        parts.push(`${value || option.default}${option.suffix ?? ''}`);
+        break;
+      }
+      case 'slider': {
+        const numeric = Number(value);
+        parts.push(option.format(Number.isFinite(numeric) && value !== '' ? numeric : option.default));
+        break;
+      }
+      case 'toggle': {
+        if (value === 'true') parts.push(option.label.toLowerCase());
+        break;
+      }
+      case 'order': {
+        const count = value.split(',').filter((part) => part.trim().length > 0).length;
+        parts.push(count > 0 ? `${count} ${count === 1 ? 'page' : 'pages'} in order` : 'no order yet');
+        break;
+      }
+    }
+  }
+
+  return [...parts, ...range].slice(0, 3).join(' · ');
+}
+
 export function defaultsFor(tool: PdfTool): Record<string, string> {
   const values: Record<string, string> = {};
 

@@ -12,6 +12,7 @@ import {
   defaultsFor,
   findTool,
   searchTools,
+  summariseOptions,
   toolsIn,
   type PdfTool,
 } from '@/pdf/catalog';
@@ -214,5 +215,37 @@ describe('formatting', () => {
     expect(formatDuration(400)).toBe('400 ms');
     expect(formatDuration(1400)).toBe('1.4s');
     expect(formatDuration(61_000)).toBe('1m 1s');
+  });
+});
+
+describe('the settings line', () => {
+  it('says which way a rotation will go, before it runs', () => {
+    const rotate = findTool('rotate');
+    expect(rotate).not.toBeNull();
+
+    const defaults = defaultsFor(rotate!);
+    expect(summariseOptions(rotate!, defaults)).toBe('90° right · all pages');
+
+    expect(summariseOptions(rotate!, { ...defaults, angle: '270', pages: '2-3' })).toBe(
+      '90° left · pages 2-3',
+    );
+  });
+
+  it('describes the numbers a tool will use', () => {
+    const watermark = findTool('watermark');
+    expect(watermark).not.toBeNull();
+
+    const summary = summariseOptions(watermark!, defaultsFor(watermark!));
+    expect(summary).toContain('“Confidential”');
+    expect(summary).toContain('%');
+  });
+
+  it('never prints a password', () => {
+    const protect = findTool('protect');
+    expect(protect).not.toBeNull();
+
+    const summary = summariseOptions(protect!, { ...defaultsFor(protect!), password: 'hunter22' });
+    expect(summary).not.toContain('hunter22');
+    expect(summary).toContain('password set');
   });
 });

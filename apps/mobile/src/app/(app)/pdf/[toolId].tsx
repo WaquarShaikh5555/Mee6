@@ -10,7 +10,7 @@ import { ScreenHeader } from '@/ui/ScreenHeader';
 import { Text } from '@/ui/Text';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { PdfTool, PdfToolId } from '@/pdf/catalog';
-import { defaultsFor, findTool } from '@/pdf/catalog';
+import { defaultsFor, findTool, summariseOptions } from '@/pdf/catalog';
 import { pickerFor, type PickedFile } from '@/pdf/documents';
 import { isEmptySignature, parseSignature } from '@/pdf/signature';
 import { describeRangeError, parseRange } from '@/pdf/ranges';
@@ -145,6 +145,8 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
     [tool, files, doc, options],
   );
 
+  const summary = summariseOptions(tool, options);
+
   const extension =
     tool.id === 'split' && options.mode === 'separate' ? 'zip' : tool.output.extension;
   const outputName = outputNameFor(files[0]?.name ?? 'document', tool.output.suffix, extension);
@@ -182,6 +184,16 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
             {blocker ? (
               <Text variant="footnote" tone="tertiary" align="center" accessibilityLiveRegion="polite">
                 {blocker}
+              </Text>
+            ) : summary.length > 0 ? (
+              <Text
+                variant="footnote"
+                tone="secondary"
+                align="center"
+                numberOfLines={2}
+                accessibilityLiveRegion="polite"
+              >
+                {summary}
               </Text>
             ) : null}
             <Button
