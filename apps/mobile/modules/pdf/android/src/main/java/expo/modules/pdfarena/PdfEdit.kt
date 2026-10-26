@@ -470,7 +470,7 @@ object PdfEdit {
       entries.forEach { (title, pageNumber) ->
         val item = PDOutlineItem()
         item.title = title
-        item.destination = document.getPage(pageNumber - 1)
+        item.setDestination(document.getPage(pageNumber - 1))
         outline.addLast(item)
       }
 

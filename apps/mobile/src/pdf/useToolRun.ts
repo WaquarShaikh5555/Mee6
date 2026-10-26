@@ -9,6 +9,7 @@
 import * as Sharing from 'expo-sharing';
 import { useCallback, useRef, useState } from 'react';
 
+import { errorFeedback, successFeedback } from '@/lib/haptics';
 import { PdfError, process as runTool, type PdfResult, type ProcessRequest } from './engine';
 
 export type RunState =
@@ -32,8 +33,10 @@ export function useToolRun() {
 
     try {
       const result = await runTool(request);
+      successFeedback();
       setState({ status: 'done', result, tookMs: Date.now() - started, request });
     } catch (error) {
+      errorFeedback();
       const pdfError =
         error instanceof PdfError
           ? error

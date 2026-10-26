@@ -60,7 +60,7 @@ object PdfOpen {
   ): T {
     val (file, temporary) = PdfFiles.materialize(context, Uri.parse(uri))
     return try {
-      withDocument(file, password, work)
+      withDocument(file, password) { document -> work(document, file) }
     } finally {
       if (temporary) PdfFiles.deleteQuietly(file)
     }

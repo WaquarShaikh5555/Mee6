@@ -43,12 +43,19 @@ export function usePdfDocument(file: PickedFile | null) {
     attempt.current += 1;
     const mine = attempt.current;
 
-    setState((current) => ({
-      ...current,
-      file: target,
-      loading: true,
-      error: null,
-    }));
+    setState((current) => {
+      const sameFile = current.file?.uri === target.uri;
+
+      return {
+        ...current,
+        file: target,
+        // A different document must not borrow the previous one's page count.
+        probe: sameFile ? current.probe : null,
+        pageCount: sameFile ? current.pageCount : 0,
+        loading: true,
+        error: null,
+      };
+    });
 
     try {
       const result = await probe(target.uri, password || undefined);
