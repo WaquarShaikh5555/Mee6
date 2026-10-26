@@ -254,9 +254,20 @@ class PdfArenaModule : Module() {
       attempt {
         val path = Uri.parse(uri).path
         if (path != null) {
+          val root = PdfFiles.outputDir(context)
           val file = File(path)
-          if (file.absolutePath.startsWith(PdfFiles.outputDir(context).absolutePath)) {
-            PdfFiles.deleteQuietly(file)
+          if (file.absolutePath.startsWith(root.absolutePath)) {
+            // A gallery result is a folder; a single result is a file. Both go.
+            PdfFiles.deleteTree(file)
+
+            val parent = file.parentFile
+            if (parent != null &&
+              parent.absolutePath != root.absolutePath &&
+              parent.absolutePath.startsWith(root.absolutePath) &&
+              parent.listFiles()?.isEmpty() == true
+            ) {
+              PdfFiles.deleteQuietly(parent)
+            }
           }
         }
       }

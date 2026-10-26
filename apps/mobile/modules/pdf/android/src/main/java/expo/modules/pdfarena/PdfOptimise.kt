@@ -46,7 +46,6 @@ object PdfOptimise {
     }
 
     val inputFile = PdfFiles.materialize(context, android.net.Uri.parse(request.inputUris.first()))
-    val originalSize = PdfFiles.sizeOf(inputFile.first)
 
     return try {
       PdfOpen.withDocument(inputFile.first, request.password) { document ->
@@ -93,21 +92,40 @@ object PdfOptimise {
         }
 
         for (index in 0 until document.numberOfPages) {
-          process(document.getPage(index).resources)
+          process(PdfConvert.resourcesOf(document.getPage(index)))
         }
 
         PdfEngine.stamp(document)
-        val output = PdfFiles.save(document, PdfEngine.output(context, request))
-        val newSize = PdfFiles.sizeOf(output)
+
+        val target = PdfEngine.output(context, request)
+        val started = PdfFiles.sizeOf(inputFile.first)
+        val newSize = PdfFiles.save(document, target).let { PdfFiles.sizeOf(it) }
+
+        // Handing back a file that is the same size, or larger, while calling it
+        // "compressed" is the one thing this tool must never do. If the work
+        // did not pay off, the result is the original bytes, said plainly.
+        if (started > 0 && newSize >= started) {
+          PdfFiles.deleteQuietly(target)
+          val copy = PdfFiles.copy(inputFile.first, PdfEngine.output(context, request))
+          return@withDocument PdfEngine.outcome(
+            copy,
+            document.numberOfPages,
+            "Nothing to shrink — this copy is the original",
+            listOf(
+              "Re-encoding made it no smaller, so the file you get back is your document unchanged.",
+              "Scanned pages are already one image each; PDF to images at a smaller size is the way to shrink those.",
+            ),
+          )
+        }
 
         val summary = when {
-          rewrote == 0 -> "No embedded images to re-encode — the file was already lean."
-          originalSize > 0 && newSize < originalSize ->
-            "$rewrote images re-encoded · ${percentSmaller(originalSize, newSize)}"
+          rewrote == 0 -> "Rebuilt the file · ${percentSmaller(started, newSize)}"
+          started > 0 && newSize < started ->
+            "$rewrote images re-encoded · ${percentSmaller(started, newSize)}"
           else -> "$rewrote images re-encoded"
         }
 
-        PdfEngine.outcome(output, document.numberOfPages, summary)
+        PdfEngine.outcome(target, document.numberOfPages, summary)
       }
     } finally {
       if (inputFile.second) PdfFiles.deleteQuietly(inputFile.first)
@@ -115,6 +133,7 @@ object PdfOptimise {
   }
 
   private fun percentSmaller(before: Long, after: Long): String {
+    if (before <= 0) return "size unchanged"
     val saved = ((before - after) * 100.0 / before).toInt()
     return if (saved > 0) "$saved% smaller" else "size unchanged"
   }

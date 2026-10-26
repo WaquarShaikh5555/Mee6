@@ -44,6 +44,7 @@ jest.mock('expo-haptics', () => ({
 import { ThemeProvider } from '@/theme/ThemeProvider';
 
 import PdfArenaScreen from '@/app/(app)/pdf/index';
+import { ResultCard } from '@/pdf/components/ResultCard';
 import PdfToolScreen from '@/app/(app)/pdf/[toolId]';
 import PdfViewerScreen from '@/app/(app)/pdf/viewer';
 
@@ -161,5 +162,56 @@ describe('the viewer', () => {
     await wrap(<PdfViewerScreen />);
 
     await waitFor(() => expect(screen.getByText('There is no file to show.')).toBeTruthy());
+  });
+});
+
+describe('what a tool hands back', () => {
+  const base = {
+    outputUri: 'file:///data/user/0/app/files/pdf-arena/Notes-images/page-001.png',
+    outputName: 'page-001.png',
+    sizeBytes: 402_000,
+    pages: 3,
+    summary: '3 images at 2.0×',
+    warnings: [],
+  };
+
+  it('shows every picture instead of hiding them in an archive', async () => {
+    await wrap(
+      <ResultCard
+        result={{
+          ...base,
+          outputUris: [
+            'file:///data/user/0/app/files/pdf-arena/Notes-images/page-001.png',
+            'file:///data/user/0/app/files/pdf-arena/Notes-images/page-002.png',
+            'file:///data/user/0/app/files/pdf-arena/Notes-images/page-003.png',
+          ],
+          text: null,
+        }}
+        tookMs={1400}
+        onShare={() => {}}
+        onDone={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('3 pictures · tap one to look closer')).toBeTruthy();
+  });
+
+  it('shows extracted words in the card, ready to copy', async () => {
+    await wrap(
+      <ResultCard
+        result={{
+          ...base,
+          outputName: 'Notes.txt',
+          outputUris: ['file:///data/user/0/app/files/pdf-arena/Notes.txt'],
+          text: 'The quick brown fox jumps over the lazy dog.',
+        }}
+        tookMs={900}
+        onShare={() => {}}
+        onDone={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('The text · long-press to copy')).toBeTruthy();
+    expect(screen.getByText(/quick brown fox/)).toBeTruthy();
   });
 });

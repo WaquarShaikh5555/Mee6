@@ -9,15 +9,19 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import com.tom_roush.pdfbox.cos.COSDictionary
+import com.tom_roush.pdfbox.cos.COSName
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
+import com.tom_roush.pdfbox.pdmodel.PDResources
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.graphics.form.PDFormXObject
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.io.File
+import java.io.FileOutputStream
 import java.util.zip.ZipOutputStream
 
 /**
@@ -42,47 +46,56 @@ object PdfConvert {
 
     val prepared = prepareForRendering(context, request)
 
-    try {
-      val (output, rendered) = ParcelFileDescriptor
-        .open(prepared.file, ParcelFileDescriptor.MODE_READ_ONLY)
-        .use { descriptor ->
-          val renderer = PdfRenderer(descriptor)
-          try {
-            val chosen = PdfEngine.pages(request.option("pages", "all"), renderer.pageCount)
+    return try {
+      // Every page becomes its own picture. A ZIP would need another app just
+      // to look at what this tool made.
+      val folder = PdfFiles.newGallery(context, request.outputName.substringBeforeLast('.'))
+      val images = mutableListOf<File>()
 
-            val zip = PdfFiles.zip(PdfEngine.output(context, request)) { archive ->
-              chosen.forEach { pageNumber ->
-                val page = renderer.openPage(pageNumber - 1)
-                try {
-                  val width = (page.width * scale).toInt().coerceAtLeast(1)
-                  val height = (page.height * scale).toInt().coerceAtLeast(1)
+      ParcelFileDescriptor.open(prepared.file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+        val renderer = PdfRenderer(descriptor)
+        try {
+          val chosen = PdfEngine.pages(request.option("pages", "all"), renderer.pageCount)
 
-                  val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                  try {
-                    val canvas = Canvas(bitmap)
-                    canvas.drawColor(Color.WHITE)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+          chosen.forEach { pageNumber ->
+            val page = renderer.openPage(pageNumber - 1)
+            try {
+              val width = (page.width * scale).toInt().coerceAtLeast(1)
+              val height = (page.height * scale).toInt().coerceAtLeast(1)
 
-                    val name = "page-${pageNumber.toString().padStart(3, '0')}.${extensionFor(format)}"
-                    PdfFiles.putEntry(archive, name) { stream ->
-                      bitmap.compress(compressFor(format), qualityFor(format), stream)
-                    }
-                  } finally {
-                    bitmap.recycle()
-                  }
-                } finally {
-                  page.close()
+              val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+              try {
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(Color.WHITE)
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+                val name = "page-${pageNumber.toString().padStart(3, '0')}.${extensionFor(format)}"
+                val file = File(folder, name)
+                FileOutputStream(file).use { stream ->
+                  bitmap.compress(compressFor(format), qualityFor(format), stream)
                 }
+                images.add(file)
+              } finally {
+                bitmap.recycle()
               }
+            } finally {
+              page.close()
             }
-
-            zip to chosen.size
-          } finally {
-            renderer.close()
           }
+        } finally {
+          renderer.close()
         }
+      }
 
-      return PdfEngine.outcome(output, rendered, "$rendered pages at ${scale}×")
+      val first = images.firstOrNull()
+        ?: throw PdfOpen.PdfFailure("No pages were chosen.", PdfOpen.PdfFailure.Kind.RANGE)
+
+      PdfEngine.outcome(
+        first,
+        images.size,
+        "${images.size} ${if (images.size == 1) "image" else "images"} at ${scale}×",
+        outputs = images,
+      )
     } finally {
       prepared.cleanup.forEach { PdfFiles.deleteQuietly(it) }
     }
@@ -230,66 +243,89 @@ object PdfConvert {
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { document, _ ->
       val chosen = PdfEngine.pages(request.option("pages", "all"), document.numberOfPages)
       val seen = mutableSetOf<Any>()
-      var count = 0
+      val folder = PdfFiles.newGallery(context, request.outputName.substringBeforeLast('.'))
+      val images = mutableListOf<File>()
 
-      val output = PdfFiles.zip(PdfEngine.output(context, request)) { zip ->
-        chosen.forEach { pageNumber ->
-          val page = document.getPage(pageNumber - 1)
+      fun save(name: String, bitmap: Bitmap) {
+        val file = File(folder, name)
+        FileOutputStream(file).use { stream -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream) }
+        images.add(file)
+      }
 
-          fun scan(resources: com.tom_roush.pdfbox.pdmodel.PDResources?) {
-            if (resources == null) return
+      fun scan(resources: PDResources?, pageNumber: Int) {
+        if (resources == null) return
 
-            resources.xObjectNames.forEach { name ->
-              val objectUnderName = try {
-                resources.getXObject(name)
+        resources.xObjectNames.forEach { name ->
+          val objectUnderName = try {
+            resources.getXObject(name)
+          } catch (error: Exception) {
+            null
+          } ?: return@forEach
+
+          when (objectUnderName) {
+            is PDImageXObject -> {
+              val key = objectUnderName.cosObject
+              if (!seen.add(key)) return@forEach
+
+              val bitmap = try {
+                objectUnderName.image
               } catch (error: Exception) {
                 null
               } ?: return@forEach
 
-              when (objectUnderName) {
-                is PDImageXObject -> {
-                  val key = objectUnderName.cosObject
-                  if (!seen.add(key)) return@forEach
-
-                  val bitmap = try {
-                    objectUnderName.image
-                  } catch (error: Exception) {
-                    null
-                  } ?: return@forEach
-
-                  // Anything smaller than an icon is noise, not an asset.
-                  if (bitmap.width < 32 || bitmap.height < 32) {
-                    bitmap.recycle()
-                    return@forEach
-                  }
-
-                  count += 1
-                  val entry = "image-${count.toString().padStart(3, '0')}-p$pageNumber.png"
-                  PdfFiles.putEntry(zip, entry) { stream ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                  }
-                  bitmap.recycle()
-                }
-
-                is PDFormXObject -> scan(objectUnderName.resources)
-                else -> Unit
+              // Anything smaller than an icon is noise, not an asset.
+              if (bitmap.width < 32 || bitmap.height < 32) {
+                bitmap.recycle()
+                return@forEach
               }
-            }
-          }
 
-          scan(page.resources)
+              val number = images.size + 1
+              save("image-${number.toString().padStart(3, '0')}-p$pageNumber.png", bitmap)
+              bitmap.recycle()
+            }
+
+            is PDFormXObject -> scan(objectUnderName.resources, pageNumber)
+            else -> Unit
+          }
         }
       }
 
-      if (count == 0) {
+      chosen.forEach { pageNumber -> scan(resourcesOf(document.getPage(pageNumber - 1)), pageNumber) }
+
+      if (images.isEmpty()) {
+        PdfFiles.deleteTree(folder)
         throw PdfOpen.PdfFailure(
-          "There are no embedded images in the pages you chose.",
+          "This document is drawn with text and shapes rather than pictures, so there is nothing to pull out. PDF to images turns its pages into pictures instead.",
           PdfOpen.PdfFailure.Kind.UNSUPPORTED,
         )
       }
 
-      PdfEngine.outcome(output, chosen.size, "$count images extracted")
+      PdfEngine.outcome(
+        images.first(),
+        chosen.size,
+        "${images.size} ${if (images.size == 1) "image" else "images"} from ${chosen.size} pages",
+        outputs = images,
+      )
     }
+  }
+
+  /**
+   * A page often inherits its resources from an ancestor node instead of
+   * carrying them itself. Reading only the page finds nothing in a great many
+   * real documents, which is why extraction looks broken on them.
+   */
+  fun resourcesOf(page: PDPage): PDResources? {
+    var node: COSDictionary? = page.cosObject
+    var level = 0
+
+    while (node != null && level < 32) {
+      val dictionary = node.getDictionaryObject(COSName.RESOURCES) as? COSDictionary
+      if (dictionary != null) return PDResources(dictionary)
+      node = node.getDictionaryObject(COSName.PARENT) as? COSDictionary
+      level += 1
+    }
+
+    return null
   }
 
   /* -------------------------------------------------------------- text --- */
@@ -323,9 +359,12 @@ object PdfConvert {
           0,
           "No text layer found",
           listOf("This looks like a scanned document: the pages are pictures, so there is no text to copy."),
+          text = "",
         )
       } else {
-        PdfEngine.outcome(output, chosen.size, "$words words from ${chosen.size} pages")
+        // The screen shows the words straight away; the long file is capped so
+        // a 900-page book never crosses the bridge in one go.
+        PdfEngine.outcome(output, chosen.size, "$words words from ${chosen.size} pages", text = text.take(400_000))
       }
     }
   }

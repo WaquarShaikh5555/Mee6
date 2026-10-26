@@ -30,6 +30,14 @@ export type PdfResult = {
   /** A sentence for the success card: "12 pages, 3 images re-encoded". */
   summary: string;
   warnings: string[];
+  /**
+   * Every file this run made. One for most tools; one per page for "to images"
+   * and one per picture for "extract images", so the screen can show them
+   * instead of hiding them in an archive.
+   */
+  outputUris: string[];
+  /** The words, for a text extraction, so they can be read without a file. */
+  text: string | null;
 };
 
 export type RenderedPage = {
@@ -204,8 +212,22 @@ export function probe(uri: string, password?: string): Promise<PdfProbe> {
   return guard(() => requireEngine().probe(uri, password ?? null));
 }
 
-export function process(request: ProcessRequest): Promise<PdfResult> {
-  return guard(() => requireEngine().process(request));
+export async function process(request: ProcessRequest): Promise<PdfResult> {
+  return guard(async () => {
+    const result = await requireEngine().process(request);
+
+    // Older engines sent one file and nothing else; normalising here means the
+    // screens never have to ask which shape they are holding.
+    return {
+      ...result,
+      warnings: Array.isArray(result.warnings) ? result.warnings : [],
+      outputUris:
+        Array.isArray(result.outputUris) && result.outputUris.length > 0
+          ? result.outputUris
+          : [result.outputUri],
+      text: typeof result.text === 'string' ? result.text : null,
+    };
+  });
 }
 
 export function renderPage(

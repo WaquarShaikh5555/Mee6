@@ -18,6 +18,7 @@ import {
   type Stroke,
 } from '../signature';
 import type { Choice, ToolOption } from '../catalog';
+import { PageThumb } from './PageThumb';
 import { SignaturePad } from './SignaturePad';
 
 /** Every option that is a control has a label; the note does not. */
@@ -94,7 +95,7 @@ function RangeField({ option, value, onChange, pageCount }: FieldProps) {
 
 /* ----------------------------------------------------------------- choice --- */
 
-function ChoiceField({ option, value, onChange }: FieldProps) {
+function ChoiceField({ option, value, onChange, uri, password }: FieldProps) {
   const theme = useTheme();
   const choices: Choice[] = (option as { choices: Choice[] }).choices;
   const selected = choices.find((choice) => choice.value === value) ?? choices[0];
@@ -148,6 +149,36 @@ function ChoiceField({ option, value, onChange }: FieldProps) {
         <Text variant="footnote" tone="tertiary">
           {selected.hint}
         </Text>
+      ) : null}
+
+      {/* Rotation is the one control whose result nobody can picture from the
+          words, so it is shown: page 1, turned by exactly what is selected. */}
+      {option.id === 'angle' && uri ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.space.md,
+            paddingTop: theme.space.xs,
+          }}
+        >
+          <PageThumb
+            uri={uri}
+            page={0}
+            width={92}
+            rotate={Number(selected?.value ?? 0)}
+            password={password}
+            label={`Page 1 turned ${Number(selected?.value ?? 0)} degrees`}
+          />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="footnote" tone="secondary">
+              Page 1, turned {Number(selected?.value ?? 0)}°
+            </Text>
+            <Text variant="caption" tone="tertiary">
+              The file changes only when you tap the button. Try each turn until the preview looks right.
+            </Text>
+          </View>
+        </View>
       ) : null}
     </View>
   );

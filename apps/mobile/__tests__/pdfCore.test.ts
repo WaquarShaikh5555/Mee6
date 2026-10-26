@@ -128,7 +128,7 @@ describe('the tool catalog', () => {
       expect(tool.detail.length).toBeGreaterThan(20);
       expect(CATEGORIES.map((category) => category.id)).toContain(tool.category);
       expect(tool.icon.length).toBeGreaterThan(0);
-      expect(['pdf', 'zip', 'txt']).toContain(tool.output.extension);
+      expect(['pdf', 'zip', 'txt', 'png', 'jpg', 'webp']).toContain(tool.output.extension);
     }
   });
 

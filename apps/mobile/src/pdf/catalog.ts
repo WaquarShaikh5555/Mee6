@@ -97,7 +97,7 @@ export type PdfTool = {
   input: 'pdf' | 'pdfs' | 'images' | 'two';
   options: ToolOption[];
   output: {
-    extension: 'pdf' | 'zip' | 'txt';
+    extension: 'pdf' | 'zip' | 'txt' | 'png' | 'jpg' | 'webp';
     /** Appended to the input's name: `notes` + `-compressed` + `.pdf`. */
     suffix: string;
   };
@@ -194,7 +194,8 @@ export const PDF_TOOLS: PdfTool[] = [
     id: 'rotate',
     name: 'Rotate',
     tagline: 'Fix the orientation',
-    detail: 'Turns the pages you name by a quarter turn at a time. Text stays selectable.',
+    detail:
+      'Choose the turn — 90°, 180° or 90° the other way — and see page 1 turned before anything is written. Text stays selectable.',
     category: 'Edit',
     icon: 'refresh-outline',
     input: 'pdf',
@@ -370,7 +371,7 @@ export const PDF_TOOLS: PdfTool[] = [
     name: 'Compress',
     tagline: 'Smaller without going fuzzy',
     detail:
-      'Only the photographs inside the document are re-encoded. Text and line art are left exactly as they are, so the page stays sharp.',
+      'The photographs inside the document are re-encoded and scaled down. Text and line art are left exactly as they are, so the page stays sharp. If a file cannot get smaller, you are told so and handed it back unchanged.',
     category: 'Optimise',
     icon: 'contract-outline',
     input: 'pdf',
@@ -509,7 +510,7 @@ export const PDF_TOOLS: PdfTool[] = [
     name: 'To images',
     tagline: 'Every page as a picture',
     detail:
-      'Rendered by Android’s own PDF renderer, so what you see is exactly what the page looks like. Delivered as a ZIP of numbered images.',
+      'Rendered by Android’s own PDF renderer, so what you see is exactly what the page looks like. Every page becomes its own picture, shown here as soon as it is made — no archive to dig through.',
     category: 'Convert',
     icon: 'images-outline',
     input: 'pdf',
@@ -538,7 +539,7 @@ export const PDF_TOOLS: PdfTool[] = [
         ],
       },
     ],
-    output: { extension: 'zip', suffix: '-images' },
+    output: { extension: 'png', suffix: '-images' },
   },
   {
     id: 'img2pdf',
@@ -580,19 +581,19 @@ export const PDF_TOOLS: PdfTool[] = [
     name: 'Extract images',
     tagline: 'The pictures inside a PDF',
     detail:
-      'Pulls out the image objects the document carries — photographs, logos, diagrams — without re-rendering the pages.',
+      'Pulls the original image objects out of the document — photographs, logos, diagrams — at their full size, untouched by re-rendering. Each one is shown and saved separately.',
     category: 'Convert',
     icon: 'albums-outline',
     input: 'pdf',
     options: [pagesAll],
-    output: { extension: 'zip', suffix: '-assets' },
+    output: { extension: 'png', suffix: '-assets' },
   },
   {
     id: 'pdf2text',
     name: 'To text',
     tagline: 'The words, as plain text',
     detail:
-      'Copies the document’s text layer into a .txt file. Scanned pages have no text layer, so they come out empty — that is the scan, not the tool.',
+      'Reads the document’s text layer and shows it right here, ready to select and copy, with a .txt copy to share. Scanned pages have no text layer, so they come out empty — that is the scan, not the tool.',
     category: 'Convert',
     icon: 'text-outline',
     input: 'pdf',

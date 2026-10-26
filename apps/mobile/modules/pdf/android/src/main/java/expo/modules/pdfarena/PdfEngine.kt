@@ -20,23 +20,45 @@ data class PdfRequest(
     option(key).ifEmpty { if (fallback) "true" else "false" }.equals("true", ignoreCase = true)
 }
 
-/** What the app is told when a tool finishes. */
+/**
+ * What the app is told when a tool finishes.
+ *
+ * `outputs` exists because some tools make many files: extracting a document's
+ * images should hand back the pictures, not a ZIP the person then has to find
+ * an app to open. The first one is also the single `outputUri`, so everything
+ * written for one file keeps working.
+ *
+ * `text` carries a text extraction back to the screen, so the words can be
+ * read and copied without leaving the app.
+ */
 data class PdfOutcome(
   val outputUri: String,
   val outputName: String,
   val sizeBytes: Long,
   val pages: Int,
   val summary: String,
-  val warnings: List<String> = emptyList()
+  val warnings: List<String> = emptyList(),
+  val outputs: List<String> = emptyList(),
+  val text: String? = null
 ) {
-  fun toMap(): Map<String, Any> = mapOf(
-    "outputUri" to outputUri,
-    "outputName" to outputName,
-    "sizeBytes" to sizeBytes,
-    "pages" to pages,
-    "summary" to summary,
-    "warnings" to warnings
-  )
+  fun toMap(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>(
+      "outputUri" to outputUri,
+      "outputName" to outputName,
+      "sizeBytes" to sizeBytes,
+      "pages" to pages,
+      "summary" to summary,
+      "warnings" to warnings,
+      "outputUris" to if (outputs.isEmpty()) listOf(outputUri) else outputs
+    )
+
+    // Absent rather than null: a null inside the map is a needless edge for the
+    // bridge to carry, and the screen treats a missing text as "none".
+    val words = text
+    if (words != null) map["text"] = words
+
+    return map
+  }
 }
 
 /**
@@ -143,15 +165,24 @@ object PdfEngine {
     file: File,
     pages: Int,
     summary: String,
-    warnings: List<String> = emptyList()
-  ): PdfOutcome = PdfOutcome(
-    outputUri = PdfFiles.toUri(file),
-    outputName = file.name,
-    sizeBytes = PdfFiles.sizeOf(file),
-    pages = pages,
-    summary = summary,
-    warnings = warnings
-  )
+    warnings: List<String> = emptyList(),
+    outputs: List<File> = emptyList(),
+    text: String? = null
+  ): PdfOutcome {
+    val all = outputs.ifEmpty { listOf(file) }
+    val total = all.sumOf { PdfFiles.sizeOf(it) }
+
+    return PdfOutcome(
+      outputUri = PdfFiles.toUri(file),
+      outputName = file.name,
+      sizeBytes = if (total > 0) total else PdfFiles.sizeOf(file),
+      pages = pages,
+      summary = summary,
+      warnings = warnings,
+      outputs = all.map { PdfFiles.toUri(it) },
+      text = text
+    )
+  }
 
   /** Metadata defaults that mark the tool without claiming authorship. */
   fun stamp(document: PDDocument) {

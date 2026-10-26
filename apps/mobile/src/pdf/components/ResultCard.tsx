@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { Button } from '@/ui/Button';
 import { Text } from '@/ui/Text';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { PdfError } from '../engine';
 import type { PdfResult } from '../engine';
-import { formatBytes, formatDuration, formatSaving } from '../format';
+import { formatBytes, formatDuration, formatSaving, mimeFor } from '../format';
+import { shareFile } from '../useToolRun';
 
 type ResultCardProps = {
   result: PdfResult;
@@ -21,6 +23,17 @@ type ResultCardProps = {
 };
 
 const OPENABLE = new Set(['pdf']);
+const PICTURE = /\.(png|jpe?g|webp)$/i;
+
+/** The last segment of a file URI, decoded, for a share sheet's title. */
+function fileNameOf(uri: string): string {
+  const raw = uri.split('/').pop() ?? 'image.png';
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
 /**
  * What happened, in the order a person cares: did it work, what did it make,
@@ -36,8 +49,16 @@ export function ResultCard({
   onDelete,
 }: ResultCardProps) {
   const theme = useTheme();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
   const extension = result.outputName.split('.').pop()?.toLowerCase() ?? '';
   const saving = beforeBytes > 0 ? formatSaving(beforeBytes, result.sizeBytes) : null;
+
+  // Pictures are shown, not described: a result of forty PNGs hiding in a ZIP
+  // is exactly what "the extractor does not work" looked like.
+  const pictures = result.outputUris.filter((uri) => PICTURE.test(uri));
+  const words = typeof result.text === 'string' ? result.text.trim() : '';
 
   return (
     <View
@@ -93,6 +114,77 @@ export function ResultCard({
         </Text>
       </View>
 
+      {pictures.length > 0 ? (
+        <View style={{ gap: theme.space.sm }}>
+          <Text variant="caption" tone="tertiary">
+            {pictures.length === 1 ? '1 picture' : `${pictures.length} pictures`} · tap one to look closer
+          </Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: theme.space.sm, paddingRight: theme.space.sm }}
+          >
+            {pictures.slice(0, 40).map((uri) => (
+              <Pressable
+                key={uri}
+                onPress={() => setPreview(uri)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={`Open ${fileNameOf(uri)}`}
+                style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+              >
+                <Image
+                  source={{ uri }}
+                  accessibilityIgnoresInvertColors
+                  resizeMode="cover"
+                  style={{
+                    width: 104,
+                    height: 136,
+                    borderRadius: theme.radius.md,
+                    backgroundColor: theme.colors.surfaceSunken,
+                    borderWidth: 1,
+                    borderColor: theme.colors.separator,
+                  }}
+                />
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {pictures.length > 40 ? (
+            <Text variant="caption" tone="tertiary">
+              Showing the first 40. All {pictures.length} are saved and shareable.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {words.length > 0 ? (
+        <View
+          style={{
+            gap: theme.space.sm,
+            padding: theme.space.md,
+            borderRadius: theme.radius.md,
+            backgroundColor: theme.colors.surfaceSunken,
+          }}
+        >
+          <Text variant="caption" tone="tertiary">
+            The text · long-press to copy
+          </Text>
+          <Text variant="footnote" selectable numberOfLines={expanded ? undefined : 14}>
+            {words}
+          </Text>
+          {words.length > 700 ? (
+            <Button
+              label={expanded ? 'Show less' : 'Show all'}
+              variant="ghost"
+              size="md"
+              onPress={() => setExpanded((current) => !current)}
+              fullWidth={false}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
       {result.warnings.length > 0 ? (
         <View style={{ gap: theme.space.xs }}>
           {result.warnings.map((warning) => (
@@ -124,6 +216,53 @@ export function ResultCard({
           />
         ) : null}
       </View>
+
+      <Modal
+        visible={preview !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreview(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(9, 13, 14, 0.96)' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: theme.space.md,
+              padding: theme.space.lg,
+            }}
+          >
+            <Button
+              label="Close"
+              variant="ghost"
+              size="md"
+              fullWidth={false}
+              onPress={() => setPreview(null)}
+            />
+            <Button
+              label="Share"
+              variant="secondary"
+              size="md"
+              icon="share-outline"
+              fullWidth={false}
+              onPress={() => {
+                if (!preview) return;
+                void shareFile(preview, fileNameOf(preview), mimeFor(fileNameOf(preview))).catch(() => {});
+              }}
+            />
+          </View>
+
+          {preview ? (
+            <Image
+              source={{ uri: preview }}
+              accessibilityIgnoresInvertColors
+              resizeMode="contain"
+              style={{ flex: 1, margin: theme.space.lg }}
+            />
+          ) : null}
+        </View>
+      </Modal>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.lg }}>
         <Button label="Done" variant="ghost" size="md" onPress={onDone} fullWidth={false} style={{ flex: 1 }} />

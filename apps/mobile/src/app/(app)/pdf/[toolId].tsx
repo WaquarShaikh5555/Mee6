@@ -21,6 +21,7 @@ import { deleteOutput, type PdfResult } from '@/pdf/engine';
 import { ComparePanel } from '@/pdf/components/ComparePanel';
 import { ErrorCard, ResultCard } from '@/pdf/components/ResultCard';
 import { FileCard } from '@/pdf/components/FileCard';
+import { PageThumb } from '@/pdf/components/PageThumb';
 import { ToolField } from '@/pdf/components/ToolControls';
 
 /** The verb on the button. A tool screen should read as an action. */
@@ -107,6 +108,16 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
 
   const multiple = tool.input === 'pdfs';
   const images = tool.input === 'images';
+
+  const preview = useCallback(() => {
+    const file = files[0];
+    if (!file) return;
+
+    router.push({
+      pathname: '/pdf/viewer',
+      params: { uri: file.uri, name: file.name, password: doc.password || undefined },
+    });
+  }, [files, doc.password, router]);
 
   const choose = useCallback(async () => {
     const picked = await pickerFor(tool.input)();
@@ -211,8 +222,10 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
             }
             onDone={reset}
             onDelete={() => {
-              void deleteOutput(state.result.outputUri).catch(() => {});
-              reset();
+              // A gallery result is many files; every one of them goes.
+              void Promise.all(
+                state.result.outputUris.map((uri) => deleteOutput(uri).catch(() => {})),
+              ).finally(reset);
             }}
           />
 
@@ -247,6 +260,18 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
                   onChoose={() => void choose()}
                   onClear={() => setFiles((current) => current.filter((_, at) => at !== index))}
                   onSubmitPassword={doc.submitPassword}
+                  onPreview={index === 0 && !images && doc.pageCount > 0 ? preview : undefined}
+                  thumbnail={
+                    index === 0 && !images && doc.pageCount > 0 ? (
+                      <PageThumb
+                        uri={file.uri}
+                        width={46}
+                        password={doc.password || undefined}
+                        onPress={preview}
+                        label={`Preview ${file.name}`}
+                      />
+                    ) : undefined
+                  }
                 />
               ))
             )}

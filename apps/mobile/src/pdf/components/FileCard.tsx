@@ -25,6 +25,10 @@ type FileCardProps = {
   onChoose: () => void;
   onClear?: () => void;
   onSubmitPassword?: (password: string) => void;
+  /** A rendered first page, so the chosen file is recognisable at a glance. */
+  thumbnail?: ReactNode;
+  /** Opens the viewer on the chosen file. */
+  onPreview?: () => void;
   extra?: ReactNode;
 };
 
@@ -50,6 +54,8 @@ export function FileCard({
   onChoose,
   onClear,
   onSubmitPassword,
+  thumbnail,
+  onPreview,
   extra,
 }: FileCardProps) {
   const theme = useTheme();
@@ -122,22 +128,24 @@ export function FileCard({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: theme.radius.md,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.accentSubtle,
-          }}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={theme.colors.accent} />
-          ) : (
-            <Ionicons name={icon} size={20} color={theme.colors.onAccentSubtle} />
-          )}
-        </View>
+        {thumbnail ?? (
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: theme.radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.accentSubtle,
+            }}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.accent} />
+            ) : (
+              <Ionicons name={icon} size={20} color={theme.colors.onAccentSubtle} />
+            )}
+          </View>
+        )}
 
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="caption" tone="tertiary">
@@ -200,16 +208,33 @@ export function FileCard({
 
       {extra}
 
-      <Pressable
-        onPress={onChoose}
-        accessibilityRole="button"
-        accessibilityLabel={`Change ${file.name}`}
-        hitSlop={theme.space.sm}
-      >
-        <Text variant="footnote" tone="accent">
-          Choose a different file
-        </Text>
-      </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.lg }}>
+        {onPreview ? (
+          <Pressable
+            onPress={onPreview}
+            accessibilityRole="button"
+            accessibilityLabel={`Preview ${file.name}`}
+            hitSlop={theme.space.sm}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            <Ionicons name="eye-outline" size={14} color={theme.colors.accent} />
+            <Text variant="footnote" tone="accent">
+              Preview
+            </Text>
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={onChoose}
+          accessibilityRole="button"
+          accessibilityLabel={`Change ${file.name}`}
+          hitSlop={theme.space.sm}
+        >
+          <Text variant="footnote" tone="accent">
+            Choose a different file
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

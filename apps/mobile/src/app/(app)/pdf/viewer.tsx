@@ -33,7 +33,7 @@ import { baseName, formatBytes } from '@/pdf/format';
 export default function PdfViewerScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ uri?: string; name?: string }>();
+  const params = useLocalSearchParams<{ uri?: string; name?: string; password?: string }>();
   const { width } = useWindowDimensions();
 
   const uri = typeof params.uri === 'string' ? params.uri : '';
@@ -41,7 +41,11 @@ export default function PdfViewerScreen() {
 
   const [pages, setPages] = useState(0);
   const [size, setSize] = useState(0);
-  const [password, setPassword] = useState('');
+  // A tool that already opened a locked file passes its password through, so
+  // previewing a result does not ask for it a second time.
+  const [password, setPassword] = useState(
+    typeof params.password === 'string' ? params.password : '',
+  );
   const [needsPassword, setNeedsPassword] = useState(false);
   const [wrongPassword, setWrongPassword] = useState(false);
   const [opening, setOpening] = useState(true);

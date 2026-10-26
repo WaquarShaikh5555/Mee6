@@ -144,6 +144,42 @@ object PdfFiles {
 
   fun toUri(file: File): String = Uri.fromFile(file).toString()
 
+  /**
+   * A fresh folder for a tool that makes many files. Each run gets its own, so
+   * two extractions of the same document never overwrite each other and
+   * deleting one result cannot touch another.
+   */
+  fun newGallery(context: Context, name: String): File {
+    val safe = name
+      .replace(Regex("[\\\\/:*?\"<>|]"), "-")
+      .trim()
+      .ifBlank { "images" }
+
+    var folder = File(outputDir(context), safe)
+    var index = 2
+    while (folder.exists()) {
+      folder = File(outputDir(context), "$safe ($index)")
+      index += 1
+    }
+    folder.mkdirs()
+    return folder
+  }
+
+  /** A byte-for-byte copy, used when a result would be no better than the input. */
+  fun copy(source: File, target: File): File {
+    source.inputStream().use { input ->
+      FileOutputStream(target).use { output -> input.copyTo(output, 64 * 1024) }
+    }
+    return target
+  }
+
+  /** Deletes a file, or a folder and everything inside it. */
+  fun deleteTree(target: File?) {
+    if (target == null || !target.exists()) return
+    if (target.isDirectory) target.listFiles()?.forEach { deleteTree(it) }
+    deleteQuietly(target)
+  }
+
   fun sizeOf(file: File): Long = if (file.exists()) file.length() else 0L
 
   /** A ZIP of whatever entries the caller streams into it. */
