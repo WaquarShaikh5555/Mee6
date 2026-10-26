@@ -147,7 +147,7 @@ object PdfConvert {
     val a4 = request.option("pageSize", "fit") == "a4"
     val document = PDDocument()
 
-    try {
+    return try {
       request.inputUris.forEach { uri ->
         val (file, temporary) = PdfFiles.materialize(context, Uri.parse(uri))
         try {

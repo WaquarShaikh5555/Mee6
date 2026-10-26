@@ -263,7 +263,7 @@ object PdfOptimise {
     var differing = 0
     var sampled = 0
     var index = 0
-    while (index < aPixels.length) {
+    while (index < aPixels.size) {
       val left = aPixels[index]
       val right = bPixels[index]
       val delta = maxOf(
