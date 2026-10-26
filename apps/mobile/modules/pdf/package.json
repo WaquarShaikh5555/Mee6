@@ -1,0 +1,7 @@
+{
+  "name": "pdf-arena",
+  "version": "0.1.0",
+  "description": "PDF Arena — a private PDF workshop that runs entirely on the phone",
+  "main": "index.ts",
+  "private": true
+}

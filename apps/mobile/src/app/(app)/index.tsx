@@ -130,6 +130,41 @@ export default function HomeScreen() {
         </Card>
       </Pressable>
 
+      {/* PDF Arena sits beside Regain, not under it: both are the reason the
+          app exists, and a dashboard with one card looks like a demo. */}
+      <Pressable
+        onPress={() => router.push('/pdf')}
+        accessibilityRole="button"
+        accessibilityLabel="Open PDF Arena, 21 tools that work on this phone"
+        style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+      >
+        <Card style={{ marginTop: theme.space.md, gap: theme.space.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: theme.radius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.brassSubtle,
+              }}
+            >
+              <Ionicons name="documents-outline" size={22} color={theme.colors.onBrassSubtle} />
+            </View>
+
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="headline">PDF Arena</Text>
+              <Text variant="footnote" tone="tertiary" numberOfLines={2}>
+                Twenty-one tools that work on this phone. No uploads, no account.
+              </Text>
+            </View>
+
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+          </View>
+        </Card>
+      </Pressable>
+
       <Card style={{ marginTop: theme.space['2xl'], gap: theme.space.xs }}>
         <Text variant="subhead" tone="secondary">
           Today

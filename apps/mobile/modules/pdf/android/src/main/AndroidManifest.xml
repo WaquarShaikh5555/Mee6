@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PDF Arena needs no permission at all. Files arrive through the system picker,
+  which hands over a URI the app is allowed to read; results are written to the
+  app's own storage and shared out through the system sheet. No storage
+  permission, and nothing in this module can reach the network.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
