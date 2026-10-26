@@ -17,7 +17,7 @@ import { describeRangeError, parseRange } from '@/pdf/ranges';
 import { mimeFor, outputNameFor } from '@/pdf/format';
 import { usePdfDocument } from '@/pdf/useDocument';
 import { shareFile, useToolRun } from '@/pdf/useToolRun';
-import type { PdfResult } from '@/pdf/engine';
+import { deleteOutput, type PdfResult } from '@/pdf/engine';
 import { ComparePanel } from '@/pdf/components/ComparePanel';
 import { ErrorCard, ResultCard } from '@/pdf/components/ResultCard';
 import { FileCard } from '@/pdf/components/FileCard';
@@ -150,9 +150,13 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
   };
 
   const share = async (result: PdfResult) => {
-    const ok = await shareFile(result.outputUri, result.outputName, mimeFor(result.outputName));
-    if (!ok) {
-      setShared('Sharing is not available on this device. Open the file instead.');
+    try {
+      const ok = await shareFile(result.outputUri, result.outputName, mimeFor(result.outputName));
+      if (!ok) {
+        setShared('Sharing is not available on this device. Open the file instead.');
+      }
+    } catch {
+      setShared('The share sheet could not open. The file is saved in the app.');
     }
   };
 
@@ -206,6 +210,10 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
               })
             }
             onDone={reset}
+            onDelete={() => {
+              void deleteOutput(state.result.outputUri).catch(() => {});
+              reset();
+            }}
           />
 
           {shared ? (

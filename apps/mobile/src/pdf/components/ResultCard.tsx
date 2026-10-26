@@ -16,15 +16,25 @@ type ResultCardProps = {
   onShare: () => void;
   onOpen?: () => void;
   onDone: () => void;
+  /** Removes the file this tool just wrote. The input is never touched. */
+  onDelete?: () => void;
 };
 
-const OPENABLE = new Set(['pdf', 'txt']);
+const OPENABLE = new Set(['pdf']);
 
 /**
  * What happened, in the order a person cares: did it work, what did it make,
  * where is it. Warnings sit below the result, not above it.
  */
-export function ResultCard({ result, tookMs, beforeBytes = 0, onShare, onOpen, onDone }: ResultCardProps) {
+export function ResultCard({
+  result,
+  tookMs,
+  beforeBytes = 0,
+  onShare,
+  onOpen,
+  onDone,
+  onDelete,
+}: ResultCardProps) {
   const theme = useTheme();
   const extension = result.outputName.split('.').pop()?.toLowerCase() ?? '';
   const saving = beforeBytes > 0 ? formatSaving(beforeBytes, result.sizeBytes) : null;
@@ -115,7 +125,20 @@ export function ResultCard({ result, tookMs, beforeBytes = 0, onShare, onOpen, o
         ) : null}
       </View>
 
-      <Button label="Done" variant="ghost" size="md" onPress={onDone} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.lg }}>
+        <Button label="Done" variant="ghost" size="md" onPress={onDone} fullWidth={false} style={{ flex: 1 }} />
+        {onDelete ? (
+          <Button
+            label="Delete"
+            variant="destructive"
+            size="md"
+            icon="trash-outline"
+            onPress={onDelete}
+            fullWidth={false}
+            accessibilityHint="Removes the file this tool made. The original document is not touched."
+          />
+        ) : null}
+      </View>
     </View>
   );
 }

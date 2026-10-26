@@ -14,9 +14,14 @@ Two things live here:
 Expo + React Native + TypeScript on the client. Accounts and data live in Supabase
 (hosted PostgreSQL) — no server to deploy, no card required.
 
-**First feature: Regain.** A dashboard button opens a screen that closes the compulsive parts
-of social apps — Reels, Shorts, Spotlight — while leaving messages and anything someone chose
-to send you open.
+**Regain.** A dashboard card opens a screen that closes the compulsive parts of social apps —
+Reels, Shorts, Spotlight — while leaving messages and anything someone chose to send you open.
+
+**PDF Arena.** Twenty-one tools — merge, split, delete, rearrange, rotate, sign, watermark, page
+numbers, bookmarks, compress, grayscale, repair, compare, protect, unlock, metadata, images in
+and out, ZIP, embedded images, text — every one of them running on the phone. No account, no
+queue, no upload; the original is never modified and every tool writes a new file. The design
+and the engine are documented in [docs/PDF-ARENA.md](docs/PDF-ARENA.md).
 
 **The mark:** a hexagon in two interlocking pieces, teal and brass. Colours, files, and how
 to regenerate them from the source artwork are in [docs/BRAND.md](docs/BRAND.md).
@@ -36,7 +41,7 @@ npm install
 npx expo start
 ```
 
-Real authentication is wired up and tested (139 tests). Set the two `EXPO_PUBLIC_SUPABASE_*`
+Real authentication is wired up and tested (205 tests). Set the two `EXPO_PUBLIC_SUPABASE_*`
 values from [apps/mobile/.env.example](apps/mobile/.env.example) in `apps/mobile/.env`;
 without them the app falls back to an on-device demo service so screens stay usable.
 

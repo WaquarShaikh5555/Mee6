@@ -45,5 +45,5 @@ android {
 
 dependencies {
   // Apache-2.0. The same library PaperKnife+ builds on; the code here is our own.
-  implementation 'com.tom_roush:pdfbox-android:2.0.27.0'
+  implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
 }

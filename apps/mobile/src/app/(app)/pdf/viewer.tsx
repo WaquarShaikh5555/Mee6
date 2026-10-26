@@ -46,8 +46,13 @@ export default function PdfViewerScreen() {
   const [wrongPassword, setWrongPassword] = useState(false);
   const [opening, setOpening] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
+  // A share or print problem is a banner, not a reason to hide the document.
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [current, setCurrent] = useState(0);
+  // Null unless the page number is being edited, so the indicator follows the
+  // swipe until someone starts typing in it.
+  const [jump, setJump] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<TextMatch[] | null>(null);
@@ -143,15 +148,23 @@ export default function PdfViewerScreen() {
   );
 
   const doShare = async () => {
-    const ok = await shareFile(uri, name, 'application/pdf');
-    if (!ok) setFailure('Sharing is not available on this device.');
+    if (pages === 0) return;
+
+    try {
+      const ok = await shareFile(uri, name, 'application/pdf');
+      if (!ok) setNotice('Sharing is not available on this device.');
+    } catch {
+      setNotice('The share sheet could not open.');
+    }
   };
 
   const doPrint = async () => {
+    if (pages === 0) return;
+
     try {
       await print(uri, baseName(name), password || undefined);
     } catch (error) {
-      setFailure(error instanceof PdfError ? error.message : 'Printing could not start.');
+      setNotice(error instanceof PdfError ? error.message : 'Printing could not start.');
     }
   };
 
@@ -267,13 +280,38 @@ export default function PdfViewerScreen() {
         ) : null}
       </View>
 
+      {notice ? (
+        <Pressable
+          onPress={() => setNotice(null)}
+          accessibilityRole="button"
+          accessibilityLabel={`${notice}. Tap to dismiss.`}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.space.sm,
+            paddingHorizontal: theme.space.lg,
+            paddingVertical: theme.space.sm,
+            backgroundColor: theme.colors.warningSubtle,
+          }}
+        >
+          <Ionicons name="information-circle-outline" size={16} color={theme.colors.warning} />
+          <Text variant="footnote" style={{ flex: 1, color: theme.colors.warning }}>
+            {notice}
+          </Text>
+          <Ionicons name="close" size={16} color={theme.colors.warning} />
+        </Pressable>
+      ) : null}
+
       {/* ---------------------------------------------------------- body --- */}
       {needsPassword ? (
         <View style={{ padding: theme.space.lg, gap: theme.space.md }}>
           <TextField
             label="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(next) => {
+              setPassword(next);
+              setWrongPassword(false);
+            }}
             placeholder="This document is locked"
             secureTextEntry
             autoCapitalize="none"
@@ -363,9 +401,36 @@ export default function PdfViewerScreen() {
               <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
             </Pressable>
 
-            <Text variant="footnote" tone="secondary" tabular>
-              {current + 1} of {pages}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.xs }}>
+              <TextInput
+                value={jump ?? String(current + 1)}
+                onChangeText={setJump}
+                onFocus={() => setJump(String(current + 1))}
+                onBlur={() => setJump(null)}
+                onSubmitEditing={() => {
+                  const page = Number.parseInt(jump ?? '', 10);
+                  if (Number.isFinite(page)) goTo(page - 1);
+                  setJump(null);
+                }}
+                keyboardType="number-pad"
+                returnKeyType="go"
+                selectTextOnFocus
+                accessibilityLabel="Go to page"
+                style={{
+                  minWidth: 46,
+                  paddingVertical: 2,
+                  textAlign: 'center',
+                  fontFamily: theme.fontFamily.sans,
+                  fontSize: theme.typography.footnote.fontSize,
+                  color: theme.colors.text,
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.colors.border,
+                }}
+              />
+              <Text variant="footnote" tone="secondary" tabular>
+                of {pages}
+              </Text>
+            </View>
 
             <Pressable
               onPress={() => goTo(current + 1)}

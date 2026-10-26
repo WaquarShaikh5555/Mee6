@@ -188,7 +188,7 @@ function Report({ report }: { report: CompareReport }) {
               >
                 <View
                   style={{
-                    width: `${Math.max(percent, missing ? 100 : 0)}%`,
+                    width: `${percent}%`,
                     height: 6,
                     borderRadius: 3,
                     backgroundColor: missing

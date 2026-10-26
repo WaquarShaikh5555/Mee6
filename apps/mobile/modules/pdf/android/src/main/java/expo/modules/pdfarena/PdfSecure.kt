@@ -41,7 +41,10 @@ object PdfSecure {
       permissions.setCanAssembleDocument(false)
 
       val policy = StandardProtectionPolicy(password, password, permissions)
-      policy.encryptionKeyLength = 128
+      // Method calls, not properties: the defaults are RC4 and 40 bits, which
+      // would make "locked" a much weaker promise than the screen makes.
+      policy.setEncryptionKeyLength(128)
+      policy.setPreferAES(true)
 
       document.protect(policy)
       PdfEngine.stamp(document)

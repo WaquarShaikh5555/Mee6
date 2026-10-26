@@ -222,7 +222,8 @@ class PdfArenaModule : Module() {
         val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
         manager.print(jobName.ifBlank { printable.name }, PrintPdfAdapter(printable), null)
 
-        null
+        // The job runs after this returns; hand the screen nothing to wait on.
+        Unit
       }
     }
 
@@ -237,14 +238,14 @@ class PdfArenaModule : Module() {
       }
     }
 
-    AsyncFunction("loadSignature") { ->
+    AsyncFunction("loadSignature") {
       attempt {
         val file = signatureFile()
         if (file.exists()) file.readText() else null
       }
     }
 
-    AsyncFunction("clearSignature") { ->
+    AsyncFunction("clearSignature") {
       attempt { PdfFiles.deleteQuietly(signatureFile()) }
     }
 

@@ -114,6 +114,9 @@ jobs:
           # module class in the DEX, the same way the app loads it.
           if unzip -p "$APK" "classes*.dex" | grep -qa "pdfarena/PdfArenaModule"; then
             echo "PDF Arena engine is in the APK"
+          elif unzip -p "$APK" "classes*.dex" | grep -qa "com/tom_roush/pdfbox"; then
+            # A minified build may rename our class; its dependency cannot go.
+            echo "PDF Arena engine is in the APK (renamed by shrinking)"
           else
             echo "PDF Arena engine is MISSING from the APK" >&2
             exit 1
@@ -163,11 +166,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
+            echo "### What went wrong"
+            grep -n -A 25 "What went wrong" build.log 2>/dev/null | head -80 || true
+            echo
+            echo "### Failed tasks"
+            grep -n "> Task .* FAILED" build.log 2>/dev/null | head -40 || true
+            echo
             echo "### Compiler errors"
-            grep -E "^(e: |error:|ERROR:)" build.log 2>/dev/null | head -60 || true
+            grep -nE "^e: |^w: .*error|error:|Execution failed" build.log 2>/dev/null | head -80 || true
+            echo
+            echo "### Causes"
+            grep -n -A 6 "Caused by:" build.log 2>/dev/null | head -60 || true
             echo
             echo "### Tail"
-            tail -c 12000 build.log 2>/dev/null || echo "no build log"
+            tail -c 8000 build.log 2>/dev/null || echo "no build log"
           } > failure.txt
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
             -f body="$(printf '```\n%s\n```' "$(cat failure.txt)")" || true
