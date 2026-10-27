@@ -211,45 +211,43 @@ object PdfEdit {
   /* --------------------------------------------------------------- sign --- */
 
   fun sign(context: Context, request: PdfRequest): PdfOutcome {
-    val strokes = parseSignature(request.option("signature"))
-    if (strokes.isEmpty()) {
-      throw PdfOpen.PdfFailure("Draw your signature first.", PdfOpen.PdfFailure.Kind.OTHER)
-    }
+    val payload = org.json.JSONObject(request.option("signature").ifEmpty { "{}" })
 
-    val corner = request.option("corner", "bottom-right")
-    val widthPercent = request.number("width", 24).coerceIn(5, 60)
+    val bitmap = PdfSignatures.render(context, payload)
+      ?: throw PdfOpen.PdfFailure(
+        "Draw your signature, or choose a photo of it, before signing.",
+        PdfOpen.PdfFailure.Kind.OTHER,
+      )
+
+    val placements = PdfSignatures.placements(payload)
 
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { document, _ ->
-      val chosen = PdfEngine.pages(request.option("pages", "all"), document.numberOfPages)
-      val bitmap = drawSignature(strokes)
+      val total = document.numberOfPages
+
+      val chosen = placements
+        .filter { it.page in 1..total }
+        .ifEmpty {
+          // The screen always sends one, but a hand-made request should sign
+          // rather than silently do nothing.
+          listOf(PdfSignatures.Placement(page = 1, x = 0.5f, y = 0.12f, width = 0.32f, rotation = 0f))
+        }
+
+      val image = LosslessFactory.createFromImage(document, bitmap)
 
       try {
-        val image = LosslessFactory.createFromImage(document, bitmap)
-
-        chosen.forEach { pageNumber ->
-          val page = document.getPage(pageNumber - 1)
-          val box = page.cropBox ?: page.mediaBox
-          val margin = 24f
-          val drawWidth = box.width * widthPercent / 100f
-          val drawHeight = drawWidth * bitmap.height / bitmap.width
-
-          // A crop box need not start at the origin; a signature placed from
-          // (0,0) lands outside the visible page on those documents.
-          val left = box.lowerLeftX
-          val bottom = box.lowerLeftY
-          val x = if (corner.contains("right")) left + box.width - margin - drawWidth else left + margin
-          val y = if (corner.contains("top")) bottom + box.height - margin - drawHeight else bottom + margin
-
-          PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true)
-            .use { stream -> stream.drawImage(image, x, y, drawWidth, drawHeight) }
+        chosen.forEach { placement ->
+          val page = document.getPage(placement.page - 1)
+          PdfSignatures.draw(document, page, image, bitmap, placement)
         }
 
         PdfEngine.stamp(document)
         val output = PdfFiles.save(document, PdfEngine.output(context, request))
+        val pages = chosen.map { it.page }.distinct().size
+
         PdfEngine.outcome(
           output,
           document.numberOfPages,
-          "Signed on ${chosen.size} ${if (chosen.size == 1) "page" else "pages"}",
+          "Signed on $pages ${if (pages == 1) "page" else "pages"}",
         )
       } finally {
         bitmap.recycle()
@@ -258,87 +256,21 @@ object PdfEdit {
   }
 
   /**
-   * The pad sends `{"strokes":[[x,y,x,y,…], …]}` where every value is a fraction
-   * of the pad's width — so the shape of the handwriting survives, and the same
-   * strokes scale cleanly onto any page size.
+   * An ink chosen in the interface, or a readable fallback.
+   *
+   * The colour arrives as `#RRGGBB`; PDF wants its channels apart, and a bad
+   * value must not take the whole tool down.
    */
-  private fun parseSignature(raw: String): List<FloatArray> {
-    if (raw.isBlank()) return emptyList()
-
+  private fun ink(value: String, fallback: Int): Int {
     return try {
-      val array = org.json.JSONObject(raw).optJSONArray("strokes") ?: return emptyList()
-      (0 until array.length()).mapNotNull { index ->
-        val stroke = array.optJSONArray(index) ?: return@mapNotNull null
-        val points = FloatArray(stroke.length()) { position ->
-          stroke.optDouble(position, 0.0).toFloat()
-        }
-        if (points.size < 2) null else points
+      if (value.length == 7 && value.startsWith("#")) {
+        android.graphics.Color.parseColor(value)
+      } else {
+        fallback
       }
     } catch (error: Exception) {
-      emptyList()
+      fallback
     }
-  }
-
-  /** Draws the strokes into a transparent bitmap, cropped to the ink. */
-  private fun drawSignature(strokes: List<FloatArray>): android.graphics.Bitmap {
-    var minX = Float.MAX_VALUE
-    var minY = Float.MAX_VALUE
-    var maxX = -Float.MAX_VALUE
-    var maxY = -Float.MAX_VALUE
-
-    strokes.forEach { points ->
-      var index = 0
-      while (index + 1 < points.size) {
-        minX = minOf(minX, points[index])
-        maxX = maxOf(maxX, points[index])
-        minY = minOf(minY, points[index + 1])
-        maxY = maxOf(maxY, points[index + 1])
-        index += 2
-      }
-    }
-
-    val inkWidth = (maxX - minX).coerceAtLeast(0.0001f)
-    val inkHeight = (maxY - minY).coerceAtLeast(0.0001f)
-    val padding = inkWidth * 0.04f
-    val pixelsPerUnit = 1200f / (inkWidth + padding * 2f)
-
-    val width = 1200
-    val height = ((inkHeight + padding * 2f) * pixelsPerUnit).toInt().coerceIn(8, 2400)
-
-    val bitmap = android.graphics.Bitmap.createBitmap(
-      width,
-      height,
-      android.graphics.Bitmap.Config.ARGB_8888,
-    )
-    val canvas = android.graphics.Canvas(bitmap)
-
-    val paint = android.graphics.Paint().apply {
-      isAntiAlias = true
-      color = android.graphics.Color.rgb(20, 34, 33)
-      style = android.graphics.Paint.Style.STROKE
-      strokeCap = android.graphics.Paint.Cap.ROUND
-      strokeJoin = android.graphics.Paint.Join.ROUND
-      strokeWidth = (width * 0.008f).coerceAtLeast(2.5f)
-    }
-
-    strokes.forEach { points ->
-      val path = android.graphics.Path()
-      var index = 0
-      var started = false
-
-      while (index + 1 < points.size) {
-        val x = (points[index] - minX + padding) * pixelsPerUnit
-        val y = (points[index + 1] - minY + padding) * pixelsPerUnit
-
-        if (started) path.lineTo(x, y) else { path.moveTo(x, y); started = true }
-        index += 2
-      }
-
-      // A tap without a drag is still a signature mark.
-      if (started) canvas.drawPath(path, paint)
-    }
-
-    return bitmap
   }
 
   /* ---------------------------------------------------------- watermark --- */
@@ -349,6 +281,7 @@ object PdfEdit {
     val angle = request.number("angle", 45)
     val size = request.number("size", 56).coerceIn(12, 200).toFloat()
     val radians = Math.toRadians(angle.toDouble())
+    val chosenInk = ink(request.option("colour"), android.graphics.Color.rgb(110, 110, 110))
 
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { document, _ ->
       val chosen = PdfEngine.pages(request.option("pages", "all"), document.numberOfPages)
@@ -383,7 +316,11 @@ object PdfEdit {
 
             stream.beginText()
             stream.setFont(font, fontSize)
-            stream.setNonStrokingColor(120, 120, 120)
+            stream.setNonStrokingColor(
+              android.graphics.Color.red(chosenInk),
+              android.graphics.Color.green(chosenInk),
+              android.graphics.Color.blue(chosenInk),
+            )
             // Rotate about the page's centre, then step back half the width so
             // the *middle* of the words sits on that point.
             stream.setTextMatrix(Matrix.getRotateInstance(radians, centreX, centreY))
@@ -415,6 +352,7 @@ object PdfEdit {
     val position = request.option("position", "bottom-right")
     val start = request.number("start", 1)
     val size = request.number("size", 10).coerceIn(6, 32).toFloat()
+    val chosenInk = ink(request.option("colour"), android.graphics.Color.rgb(70, 70, 70))
 
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { document, _ ->
       val count = document.numberOfPages
@@ -444,7 +382,11 @@ object PdfEdit {
           .use { stream ->
             stream.beginText()
             stream.setFont(font, size)
-            stream.setNonStrokingColor(90, 90, 90)
+            stream.setNonStrokingColor(
+              android.graphics.Color.red(chosenInk),
+              android.graphics.Color.green(chosenInk),
+              android.graphics.Color.blue(chosenInk),
+            )
             stream.newLineAtOffset(x, y)
             stream.showText(centred(text))
             stream.endText()

@@ -23,7 +23,7 @@ all original. Nothing was copied.
 | 3 | Delete | **Delete pages** | Range → the same document without those pages |
 | 4 | Rearrange | **Rearrange** | Tap pages in the new order; a numbered list builds up |
 | 5 | Rotate | **Rotate** | Arrows either side of the page turn it a quarter at a time, both ways, previewed live |
-| 6 | Sign | **Sign** | Draw a signature, place it on a page, embed it |
+| 6 | Sign | **Sign** | Draw in four inks or use a photo, then drag and pinch it into place on any page |
 | 7 | Watermark | **Watermark** | Text, opacity, angle, size, range |
 | 8 | Page numbers | **Page numbers** | `{n}` format, six positions, start number, size |
 | 9 | Bookmarks | **Bookmarks** | Read the outline, add and remove entries |
@@ -139,13 +139,30 @@ tiles that filters as you type; a tool screen is a file slot, its options, and o
   hairline. Every control is a real touch target (44/48 pt), and every control reads its
   colours from the theme, so light and dark are the same design.
 
-### Signatures are strokes, not pictures
+### Signing: a pad, then the page
 
-The pad records the path of the finger, normalised to the pad's width, and the engine draws
-that path with Android's own canvas at 1200 px before placing it on the page. A signature
-therefore stays sharp at any size, weighs a few kilobytes in storage, and can be redrawn in
-the pad next time. A screenshot of a pad would be jagged at print size and would have to be
-stored as a picture of handwriting — a worse thing to keep on a phone.
+The original put a signature pad on the tool screen and a row of corner buttons beside it. That
+is a form, not a signature: you cannot see where the ink lands, and "bottom right" is not a
+decision anyone makes about a contract.
+
+Two screens instead, each doing one thing:
+
+1. **The pad**, full screen — ink in black, navy, blue or red; undo and clear; and a photo
+   option for a signature that already exists on paper. A photo is not pasted in as it is: the
+   engine crops to the ink and fades the paper to transparent, so what lands on the page is
+   handwriting rather than a white rectangle.
+2. **The page**, with the signature on it — drag to move, pinch to size, twist to tilt, and a
+   page strip so the same signature can go on page 1 and page 7 at different spots.
+
+The engine receives fractions of the *visible* page — 0–1 across, 0–1 down — plus a rotation.
+A PDF page is bottom-left origin and may carry its own `/Rotate`, so one function,
+`PdfSignatures.toUserSpace`, is the only place that difference is allowed to exist; everything
+a person sees is in screen coordinates, top-left.
+
+Drawn ink is kept as **strokes** (the path of the finger, normalised to the pad's width), so it
+is a few kilobytes, stays sharp at any size, and can be redrawn in the pad next time. A photo
+is kept as a prepared PNG. Both are saved to a small on-phone library, newest first, so the
+second signature of the day is one tap.
 
 **One screen, 21 tools.** A tool is data: what it needs, which options it takes, how its
 output is named. Adding the 22nd tool means adding an entry, not a screen.

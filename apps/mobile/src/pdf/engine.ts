@@ -98,8 +98,12 @@ type PdfArenaNativeModule = {
     secondPassword?: string | null,
   ): Promise<CompareReport>;
   print(uri: string, jobName: string, password?: string | null): Promise<void>;
-  saveSignature(pngBase64: string): Promise<void>;
-  loadSignature(): Promise<string | null>;
+  /** Crops a photo of a signature to its ink and drops the paper. */
+  prepareSignatureImage(uri: string): Promise<{ uri: string; width: number; height: number }>;
+  /** Keeps a signature on this phone; `payloadJson` is what the editor built. */
+  saveSignature(payloadJson: string): Promise<{ uri: string; createdAt: number }>;
+  loadSignatures(): Promise<{ uri: string; createdAt: number }[]>;
+  deleteSignature(uri: string): Promise<boolean>;
   deleteOutput(uri: string): Promise<void>;
 };
 
@@ -262,12 +266,24 @@ export function print(uri: string, jobName: string, password?: string): Promise<
   return guard(() => requireEngine().print(uri, jobName, password ?? null));
 }
 
-export function saveSignature(pngBase64: string): Promise<void> {
-  return guard(() => requireEngine().saveSignature(pngBase64));
+export function prepareSignatureImage(
+  uri: string,
+): Promise<{ uri: string; width: number; height: number }> {
+  return guard(() => requireEngine().prepareSignatureImage(uri));
 }
 
-export function loadSignature(): Promise<string | null> {
-  return guard(() => requireEngine().loadSignature());
+export function saveSignature(
+  payloadJson: string,
+): Promise<{ uri: string; createdAt: number }> {
+  return guard(() => requireEngine().saveSignature(payloadJson));
+}
+
+export function loadSignatures(): Promise<{ uri: string; createdAt: number }[]> {
+  return guard(() => requireEngine().loadSignatures());
+}
+
+export function deleteSignature(uri: string): Promise<boolean> {
+  return guard(() => requireEngine().deleteSignature(uri));
 }
 
 export function deleteOutput(uri: string): Promise<void> {

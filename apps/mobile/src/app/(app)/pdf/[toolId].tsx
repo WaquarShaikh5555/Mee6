@@ -12,7 +12,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import type { PdfTool, PdfToolId } from '@/pdf/catalog';
 import { defaultsFor, findTool, summariseOptions } from '@/pdf/catalog';
 import { pickerFor, type PickedFile } from '@/pdf/documents';
-import { isEmptySignature, parseSignature } from '@/pdf/signature';
+import { isSigned, parsePayload } from '@/pdf/signature';
 import { describeRangeError, parseRange } from '@/pdf/ranges';
 import { mimeFor, outputNameFor } from '@/pdf/format';
 import { usePdfDocument } from '@/pdf/useDocument';
@@ -442,8 +442,12 @@ function whatIsMissing(
       return 'Tap the pages in the order you want them.';
     }
 
-    if (option.kind === 'signature' && isEmptySignature(parseSignature(options.signature))) {
-      return 'Draw your signature first.';
+    if (option.kind === 'signature') {
+      const payload = parsePayload(options.signature);
+
+      if (!payload) return 'Tap Sign to draw your signature.';
+      if (payload.placements.length === 0) return 'Place the signature on a page.';
+      if (!isSigned(payload)) return 'That signature is empty — draw it again.';
     }
 
     if (option.kind === 'text' && option.id === 'text' && tool.id === 'watermark') {

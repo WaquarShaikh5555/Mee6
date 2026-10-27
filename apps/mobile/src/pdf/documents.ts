@@ -63,6 +63,25 @@ export async function pickImages(): Promise<PickedFile[]> {
   }));
 }
 
+/** A single photo, for a signature taken with the camera or from the gallery. */
+export async function pickSignaturePhoto(): Promise<PickedFile | null> {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsMultipleSelection: false,
+    quality: 1,
+  });
+
+  if (result.canceled || !result.assets[0]) return null;
+
+  const asset = result.assets[0];
+  return {
+    uri: asset.uri,
+    name: asset.fileName || nameFromUri(asset.uri, 'signature.jpg'),
+    size: asset.fileSize ?? 0,
+    mimeType: asset.mimeType,
+  };
+}
+
 export function pickerFor(input: 'pdf' | 'pdfs' | 'images' | 'two'): () => Promise<PickedFile[]> {
   if (input === 'images') return () => pickImages();
   if (input === 'pdfs') return () => pickPdfs(true);

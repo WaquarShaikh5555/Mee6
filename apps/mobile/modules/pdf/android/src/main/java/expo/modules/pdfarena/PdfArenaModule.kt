@@ -41,8 +41,6 @@ class PdfArenaModule : Module() {
     get() = appContext.reactContext?.applicationContext
       ?: throw IllegalStateException("PDF Arena needs a running app context")
 
-  private fun signatureFile(): File = File(context.filesDir, "pdf-arena-signature.png")
-
   private var libraryReady = false
 
   /**
@@ -232,25 +230,29 @@ class PdfArenaModule : Module() {
     }
 
     /**
-     * The signature pad's strokes, kept for next time. They are stored as JSON
-     * rather than a picture: a few kilobytes, sharp at any size, and never
-     * shared with anything.
+     * A photo of a signature on paper, made usable as one.
+     *
+     * Cropped to the ink, with the paper turned transparent, so what lands on
+     * the page is handwriting rather than a white rectangle.
      */
-    AsyncFunction("saveSignature") { strokesJson: String ->
+    AsyncFunction("prepareSignatureImage") { uri: String ->
+      attempt { PdfSignatures.fromPhoto(context, uri) }
+    }
+
+    /** Keeps a signature on this phone, as a picture at pen resolution. */
+    AsyncFunction("saveSignature") { payloadJson: String ->
       attempt {
-        signatureFile().writeText(strokesJson)
+        PdfSignatures.remember(context, org.json.JSONObject(payloadJson.ifEmpty { "{}" }))
       }
     }
 
-    AsyncFunction("loadSignature") {
-      attempt {
-        val file = signatureFile()
-        if (file.exists()) file.readText() else null
-      }
+    /** Everything kept, newest first. */
+    AsyncFunction("loadSignatures") {
+      attempt { PdfSignatures.list(context) }
     }
 
-    AsyncFunction("clearSignature") {
-      attempt { PdfFiles.deleteQuietly(signatureFile()) }
+    AsyncFunction("deleteSignature") { uri: String ->
+      attempt { PdfSignatures.forget(context, uri) }
     }
 
     /** Deletes a result this module created, and refuses anything else. */

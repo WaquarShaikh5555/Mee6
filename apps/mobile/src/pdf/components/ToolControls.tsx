@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, Switch, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, Switch, TextInput, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { Badge } from '@/ui/Badge';
 import { Text } from '@/ui/Text';
@@ -11,15 +12,19 @@ import type { Bookmark } from '../engine';
 import { readBookmarks } from '../engine';
 import { describeRangeError, parseRange } from '../ranges';
 import {
-  isEmptySignature,
-  loadSavedSignature,
-  rememberSignature,
-  signatureJson,
-  type Stroke,
+  describePayload,
+  inkBounds,
+  isSigned,
+  parsePayload,
+  payloadJson,
+  strokePath,
+  type SignatureInk,
+  type SignaturePayload,
 } from '../signature';
 import { describeRotation, type Choice, type ToolOption } from '../catalog';
 import { PageThumb } from './PageThumb';
-import { SignaturePad } from './SignaturePad';
+import { SignaturePlacementSheet } from './SignaturePlacementSheet';
+import { SignatureSheet } from './SignatureSheet';
 
 /** Every option that is a control has a label; the note does not. */
 type LabelledOption = Exclude<ToolOption, { kind: 'note' }>;
@@ -56,6 +61,8 @@ export function ToolField({ option, ...rest }: Omit<FieldProps, 'option'> & { op
       return <BookmarksField option={option} {...rest} />;
     case 'rotation':
       return <RotationField option={option} {...rest} />;
+    case 'colour':
+      return <ColourField option={option} {...rest} />;
     case 'signature':
       return <SignatureField option={option} {...rest} />;
     case 'note':
@@ -396,6 +403,68 @@ function ToggleField({ option, value, onChange }: FieldProps) {
 }
 
 /* ------------------------------------------------------------------ order --- */
+
+/* ----------------------------------------------------------------- colour --- */
+
+/** Ink for text drawn on a page. Swatches, because a colour is seen, not read. */
+function ColourField({ option, value, onChange }: FieldProps) {
+  const theme = useTheme();
+  const swatches = (option as { swatches: { value: string; label: string }[] }).swatches;
+  const selected = swatches.find((swatch) => swatch.value === value) ?? swatches[0];
+
+  return (
+    <View style={{ gap: theme.space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <Text variant="subhead" tone="secondary">
+          {option.label}
+        </Text>
+        <Text variant="footnote" tone="tertiary">
+          {selected?.label}
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: theme.space.md }}>
+        {swatches.map((swatch) => {
+          const active = swatch.value === selected?.value;
+
+          return (
+            <Pressable
+              key={swatch.value}
+              onPress={() => {
+                if (active) return;
+                tapFeedback();
+                onChange(swatch.value);
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={swatch.label}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: active ? theme.colors.accent : 'transparent',
+              }}
+            >
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: swatch.value,
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,0,0,0.12)',
+                }}
+              />
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 /* --------------------------------------------------------------- rotation --- */
 
@@ -821,32 +890,40 @@ function parseBookmarks(value: string): Bookmark[] {
 
 /* -------------------------------------------------------------- signature --- */
 
-function SignatureField({ value, onChange }: FieldProps) {
+function SignatureField({ value, onChange, pageCount, uri, password }: FieldProps) {
   const theme = useTheme();
-  const [strokes, setStrokes] = useState<Stroke[]>(() => parseStrokes(value));
-  const [saved, setSaved] = useState<'idle' | 'yes'>('idle');
-  const loaded = useRef(false);
+  const [payload, setPayload] = useState<SignaturePayload | null>(() => parsePayload(value));
+  const [stage, setStage] = useState<'none' | 'draw' | 'place'>('none');
 
+  // The tool screen owns the value; this keeps the local copy honest when the
+  // screen clears the options after a run.
   useEffect(() => {
-    if (loaded.current) return;
-    loaded.current = true;
+    if ((value ?? '') === '') setPayload(null);
+  }, [value]);
 
-    if (parseStrokes(value).length > 0) return;
+  const ink: SignatureInk | null = payload
+    ? payload.kind === 'photo'
+      ? { kind: 'photo', file: payload.file, aspect: payload.aspect }
+      : { kind: 'strokes', strokes: payload.strokes, colour: payload.colour }
+    : null;
 
-    void loadSavedSignature().then((remembered) => {
-      if (remembered.length === 0) return;
-      setStrokes(remembered);
-      onChange(signatureJson(remembered));
-    });
-    // Runs once, to offer the signature already on this phone.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const update = (next: Stroke[]) => {
-    setStrokes(next);
-    setSaved('idle');
-    onChange(signatureJson(next));
+  const commit = (next: SignaturePayload | null) => {
+    setPayload(next);
+    onChange(payloadJson(next));
   };
+
+  if (!uri) {
+    return (
+      <View style={{ gap: theme.space.sm }}>
+        <Text variant="subhead" tone="secondary">
+          Signature
+        </Text>
+        <Text variant="footnote" tone="tertiary">
+          Choose the document first — the signature is placed on its pages.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: theme.space.md }}>
@@ -854,64 +931,144 @@ function SignatureField({ value, onChange }: FieldProps) {
         <Text variant="subhead" tone="secondary">
           Signature
         </Text>
-        {isEmptySignature(strokes) ? null : <Badge label="Ready" tone="success" />}
+        {isSigned(payload) ? <Badge label="Placed" tone="success" /> : null}
       </View>
 
-      <SignaturePad strokes={strokes} onChange={update} />
+      {payload && ink ? (
+        <Pressable
+          onPress={() => setStage('place')}
+          accessibilityRole="button"
+          accessibilityLabel="Change where the signature goes"
+          style={{
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.separator,
+            backgroundColor: '#FFFFFF',
+            padding: theme.space.md,
+            height: 96,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <InkThumb ink={ink} />
+        </Pressable>
+      ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text variant="footnote" tone="tertiary" style={{ flex: 1 }}>
-          {saved === 'yes'
-            ? 'Kept on this phone for next time.'
-            : 'The stroke, not a picture of it — sharp at any size.'}
-        </Text>
+      <Pressable
+        onPress={() => setStage('draw')}
+        accessibilityRole="button"
+        accessibilityLabel={payload ? 'Change the signature' : 'Add your signature'}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.space.md,
+          padding: theme.space.lg,
+          borderRadius: theme.radius.lg,
+          borderWidth: 1.5,
+          borderStyle: payload ? 'solid' : 'dashed',
+          borderColor: pressed ? theme.colors.accent : theme.colors.border,
+          backgroundColor: pressed ? theme.colors.accentSubtle : theme.colors.surface,
+        })}
+      >
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: theme.radius.full,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.accentSubtle,
+          }}
+        >
+          <Ionicons
+            name={payload ? 'pencil' : 'create-outline'}
+            size={20}
+            color={theme.colors.onAccentSubtle}
+          />
+        </View>
 
-        {isEmptySignature(strokes) ? null : (
-          <Pressable
-            onPress={() => {
-              void rememberSignature(strokes).then((ok) => {
-                if (ok) setSaved('yes');
-              });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Remember this signature"
-            hitSlop={theme.space.sm}
-            style={{ paddingVertical: theme.space.sm, paddingLeft: theme.space.md }}
-          >
-            <Text variant="footnote" tone="accent">
-              Remember
-            </Text>
-          </Pressable>
-        )}
-      </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="subhead">{payload ? 'Change the signature' : 'Tap to sign'}</Text>
+          <Text variant="footnote" tone="tertiary">
+            {payload
+              ? 'Draw again, or use a photo of your signature.'
+              : 'Opens a pad with ink colours, or a photo of a signature on paper.'}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+      </Pressable>
+
+      <Text variant="footnote" tone={isSigned(payload) ? 'accent' : 'tertiary'}>
+        {isSigned(payload) ? describePayload(payload) : 'No signature placed yet.'}
+      </Text>
+
+      <SignatureSheet
+        visible={stage === 'draw'}
+        initial={payload}
+        onCancel={() => setStage('none')}
+        onDone={(next) => {
+          commit({ ...next, placements: payload?.placements ?? [] });
+          // Straight to placement: a signature nobody placed signs nothing.
+          setStage('place');
+        }}
+      />
+
+      <SignaturePlacementSheet
+        visible={stage === 'place'}
+        ink={ink}
+        uri={uri}
+        password={password}
+        pageCount={pageCount}
+        initial={payload?.placements ?? []}
+        onCancel={() => setStage('none')}
+        onDone={(placements) => {
+          if (payload) commit({ ...payload, placements });
+          setStage('none');
+        }}
+      />
     </View>
   );
 }
 
-function parseStrokes(value: string): Stroke[] {
-  if (!value) return [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    const raw = parsed && typeof parsed === 'object' && 'strokes' in parsed
-      ? (parsed as { strokes?: unknown }).strokes
-      : parsed;
-    if (!Array.isArray(raw)) return [];
+/** The signature as it was made, drawn to fit the card. */
+function InkThumb({ ink }: { ink: SignatureInk }) {
+  const bounds = useMemo(
+    () => (ink.kind === 'strokes' ? inkBounds(ink.strokes) : { x: 0, y: 0, w: 1, h: ink.aspect }),
+    [ink],
+  );
 
-    return raw
-      .map((stroke) => {
-        if (!Array.isArray(stroke)) return [];
-        const points: Stroke = [];
-        for (let index = 0; index + 1 < stroke.length; index += 2) {
-          const x: unknown = stroke[index];
-          const y: unknown = stroke[index + 1];
-          if (typeof x === 'number' && typeof y === 'number') points.push({ x, y });
-        }
-        return points;
-      })
-      .filter((stroke) => stroke.length > 0);
-  } catch {
-    return [];
+  if (ink.kind === 'photo') {
+    return (
+      <Image
+        source={{ uri: ink.file }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+        accessibilityLabel="Your signature"
+        style={{ width: '100%', height: '100%' }}
+      />
+    );
   }
+
+  return (
+    <Svg
+      viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {ink.strokes.map((stroke, index) => (
+        <Path
+          key={index}
+          d={strokePath(stroke, 1, 1)}
+          stroke={ink.colour}
+          strokeWidth={0.006}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+    </Svg>
+  );
 }
 
 /* ------------------------------------------------------------------- note --- */

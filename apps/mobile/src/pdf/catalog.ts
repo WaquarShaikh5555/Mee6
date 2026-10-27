@@ -13,6 +13,8 @@
 
 import type { Ionicons } from '@expo/vector-icons';
 
+import { describePayload, parsePayload } from './signature';
+
 export type PdfCategory = 'Edit' | 'Optimise' | 'Secure' | 'Convert';
 
 export type Choice = { value: string; label: string; hint?: string };
@@ -58,6 +60,14 @@ export type ToolOption =
   | { kind: 'order'; id: string; label: string; hint: string }
   /** Arrows around the page itself: the turn is something you do, not pick. */
   | { kind: 'rotation'; id: string; label: string; default: string }
+  /** Ink for text drawn onto a page: swatches, because colour is seen. */
+  | {
+      kind: 'colour';
+      id: string;
+      label: string;
+      default: string;
+      swatches: { value: string; label: string }[];
+    }
   /** The document outline, edited in place. */
   | { kind: 'bookmarks'; id: string; label: string }
   /** Explanatory text, not an input. */
@@ -112,6 +122,15 @@ export const CATEGORIES: { id: PdfCategory; blurb: string }[] = [
   { id: 'Optimise', blurb: 'Smaller, cleaner, checked' },
   { id: 'Secure', blurb: 'Locked, unlocked, described' },
   { id: 'Convert', blurb: 'Out of the PDF, or into one' },
+];
+
+/** The inks a mark drawn onto a page may use. */
+const inks: { value: string; label: string }[] = [
+  { value: '#111111', label: 'Black' },
+  { value: '#6E6E6E', label: 'Grey' },
+  { value: '#A31621', label: 'Red' },
+  { value: '#1D2A6B', label: 'Navy' },
+  { value: '#0B6B4F', label: 'Green' },
 ];
 
 const pagesAll: ToolOption = {
@@ -219,36 +238,11 @@ export const PDF_TOOLS: PdfTool[] = [
     name: 'Sign',
     tagline: 'Add your signature',
     detail:
-      'Draw a signature once and it is kept on this phone for next time. It is placed on top of the page, not over the text underneath.',
+      'Draw your signature once — in black, navy, blue or red — or use a photo of one on paper. Then drag it anywhere on the page and pinch to size it. Kept on this phone for next time.',
     category: 'Edit',
     icon: 'pencil-outline',
     input: 'pdf',
-    options: [
-      { kind: 'signature', id: 'signature', label: 'Signature' },
-      { ...pagesAll, label: 'Pages to sign', hint: 'The same signature on each page you name.' },
-      {
-        kind: 'choice',
-        id: 'corner',
-        label: 'Placement',
-        default: 'bottom-right',
-        choices: [
-          { value: 'bottom-right', label: 'Bottom right' },
-          { value: 'bottom-left', label: 'Bottom left' },
-          { value: 'top-right', label: 'Top right' },
-          { value: 'top-left', label: 'Top left' },
-        ],
-      },
-      {
-        kind: 'slider',
-        id: 'width',
-        label: 'Size',
-        min: 10,
-        max: 45,
-        step: 1,
-        default: 24,
-        format: (value) => `${value}% of the page width`,
-      },
-    ],
+    options: [{ kind: 'signature', id: 'signature', label: 'Signature' }],
     output: { extension: 'pdf', suffix: '-signed' },
   },
   {
@@ -268,6 +262,13 @@ export const PDF_TOOLS: PdfTool[] = [
         placeholder: 'Confidential',
         maxLength: 60,
         default: 'Confidential',
+      },
+      {
+        kind: 'colour',
+        id: 'colour',
+        label: 'Ink',
+        default: inks[1]!.value,
+        swatches: inks,
       },
       {
         kind: 'slider',
@@ -337,6 +338,7 @@ export const PDF_TOOLS: PdfTool[] = [
           { value: 'top-right', label: 'Top right' },
         ],
       },
+      { kind: 'colour', id: 'colour', label: 'Ink', default: inks[1]!.value, swatches: inks },
       { kind: 'number', id: 'start', label: 'Start at', min: 1, max: 9999, default: 1 },
       {
         kind: 'slider',
@@ -659,7 +661,7 @@ export function summariseOptions(tool: PdfTool, options: Record<string, string>)
   const parts: string[] = [];
 
   for (const option of tool.options) {
-    if (option.kind === 'note' || option.kind === 'bookmarks' || option.kind === 'signature') {
+    if (option.kind === 'note' || option.kind === 'bookmarks') {
       continue;
     }
 
@@ -703,6 +705,15 @@ export function summariseOptions(tool: PdfTool, options: Record<string, string>)
         parts.push(describeRotation(value || option.default));
         break;
       }
+      case 'signature': {
+        parts.push(describePayload(parsePayload(value)));
+        break;
+      }
+      case 'colour': {
+        const chosen = option.swatches.find((swatch) => swatch.value === value) ?? option.swatches[0];
+        if (chosen) parts.push(chosen.label);
+        break;
+      }
     }
   }
 
@@ -718,6 +729,7 @@ export function defaultsFor(tool: PdfTool): Record<string, string> {
       case 'choice':
       case 'text':
       case 'rotation':
+      case 'colour':
         values[option.id] = option.default ?? '';
         break;
       case 'order':

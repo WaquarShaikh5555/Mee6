@@ -125,12 +125,12 @@ describe('a tool screen', () => {
     expect(screen.getByDisplayValue('Confidential')).toBeTruthy();
   });
 
-  it('draws a signature pad rather than asking for a photo', async () => {
+  it('asks for the document before it asks for a signature', async () => {
     mockParams.toolId = 'sign';
     await wrap(<PdfToolScreen />);
 
-    expect(screen.getByText('Sign here with your finger')).toBeTruthy();
-    // Nothing can run before a document is chosen, signature or not.
+    // A signature is placed on pages, so there must be pages first.
+    expect(screen.getByText('Choose the document first — the signature is placed on its pages.')).toBeTruthy();
     expect(screen.getByText('Choose a document to begin.')).toBeTruthy();
   });
 
@@ -267,5 +267,47 @@ describe('turning a page', () => {
 
     expect(screen.getByText('No turn yet')).toBeTruthy();
     expect(screen.getByText('Tap an arrow to turn the page.')).toBeTruthy();
+  });
+});
+
+describe('ink on a page', () => {
+  const inks = [
+    { value: '#111111', label: 'Black' },
+    { value: '#A31621', label: 'Red' },
+    { value: '#0B6B4F', label: 'Green' },
+  ];
+
+  it('offers swatches rather than a hex field', async () => {
+    const onChange = jest.fn();
+    await wrap(
+      <ToolField
+        option={{ kind: 'colour', id: 'colour', label: 'Ink', default: '#111111', swatches: inks }}
+        value="#111111"
+        onChange={onChange}
+        pageCount={1}
+      />,
+    );
+
+    expect(screen.getByLabelText('Black')).toBeTruthy();
+    expect(screen.getByLabelText('Red')).toBeTruthy();
+    expect(screen.getByLabelText('Green')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Red'));
+    expect(onChange).toHaveBeenCalledWith('#A31621');
+  });
+
+  it('does not fire for the colour already chosen', async () => {
+    const onChange = jest.fn();
+    await wrap(
+      <ToolField
+        option={{ kind: 'colour', id: 'colour', label: 'Ink', default: '#111111', swatches: inks }}
+        value="#111111"
+        onChange={onChange}
+        pageCount={1}
+      />,
+    );
+
+    await fireEvent.press(screen.getByLabelText('Black'));
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
