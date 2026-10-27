@@ -60,6 +60,12 @@ export function ResultCard({
   const pictures = result.outputUris.filter((uri) => PICTURE.test(uri));
   const words = typeof result.text === 'string' ? result.text.trim() : '';
 
+  // A 400-page book is a megabyte of characters; laying all of it out to show
+  // fourteen lines would make the screen stutter for nothing.
+  const SHOWN = 40_000;
+  const shown = words.slice(0, SHOWN);
+  const truncated = words.length > SHOWN;
+
   return (
     <View
       style={{
@@ -171,8 +177,13 @@ export function ResultCard({
             The text · long-press to copy
           </Text>
           <Text variant="footnote" selectable numberOfLines={expanded ? undefined : 14}>
-            {words}
+            {shown}
           </Text>
+          {truncated ? (
+            <Text variant="caption" tone="tertiary">
+              Showing the first {SHOWN.toLocaleString()} characters. Share the .txt for all of it.
+            </Text>
+          ) : null}
           {words.length > 700 ? (
             <Button
               label={expanded ? 'Show less' : 'Show all'}

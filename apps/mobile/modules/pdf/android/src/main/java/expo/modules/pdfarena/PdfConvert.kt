@@ -174,7 +174,21 @@ object PdfConvert {
               PdfOpen.PdfFailure.Kind.UNSUPPORTED,
             )
 
-          val image = JPEGFactory.createFromImage(document, bitmap, 0.85f)
+          // JPEG has no transparency: a transparent PNG handed straight to the
+          // encoder comes out with black where the background was. Flatten
+          // onto white first, which is what the person sees on screen.
+          val picture = if (bitmap.hasAlpha()) {
+            val flat = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(flat)
+            canvas.drawColor(Color.WHITE)
+            canvas.drawBitmap(bitmap, 0f, 0f, null)
+            bitmap.recycle()
+            flat
+          } else {
+            bitmap
+          }
+
+          val image = JPEGFactory.createFromImage(document, picture, 0.85f)
 
           if (a4) {
             val page = PDPage(PDRectangle.A4)
@@ -202,7 +216,7 @@ object PdfConvert {
             }
           }
 
-          bitmap.recycle()
+          picture.recycle()
         } finally {
           if (temporary) PdfFiles.deleteQuietly(file)
         }
