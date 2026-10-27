@@ -30,7 +30,7 @@ const ACTIONS: Record<PdfToolId, string> = {
   split: 'Split the pages',
   delete: 'Delete those pages',
   rearrange: 'Build in this order',
-  rotate: 'Rotate the pages',
+  rotate: 'Turn the pages',
   sign: 'Sign the document',
   watermark: 'Add the watermark',
   'page-numbers': 'Number the pages',
@@ -408,6 +408,21 @@ function whatIsMissing(
   if (tool.id === 'unlock') {
     if (doc.probe && !doc.probe.encrypted) return 'This document is not locked.';
     if (!options.password) return 'Enter the password this file was locked with.';
+  }
+
+  const chosen = (options.pages ?? '').trim();
+  const everyPage = chosen.length === 0 || chosen === 'all' || chosen === '*';
+
+  if (tool.id === 'delete' && everyPage) {
+    return 'Name the pages to remove — everything else is kept.';
+  }
+
+  if (tool.id === 'split' && options.mode !== 'separate' && everyPage) {
+    return 'Name the pages to pull out, or switch to one file per page.';
+  }
+
+  if (tool.id === 'rotate' && Number(options.angle ?? 0) % 360 === 0) {
+    return 'Turn the page with the arrows above.';
   }
 
   if (tool.id === 'protect' && (options.password ?? '').length < 4) {

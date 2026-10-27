@@ -56,6 +56,8 @@ export type ToolOption =
   | { kind: 'signature'; id: string; label: string }
   /** Reorder pages by tapping them; produces a comma separated order. */
   | { kind: 'order'; id: string; label: string; hint: string }
+  /** Arrows around the page itself: the turn is something you do, not pick. */
+  | { kind: 'rotation'; id: string; label: string; default: string }
   /** The document outline, edited in place. */
   | { kind: 'bookmarks'; id: string; label: string }
   /** Explanatory text, not an input. */
@@ -139,7 +141,7 @@ export const PDF_TOOLS: PdfTool[] = [
     name: 'Split',
     tagline: 'Pull pages out into a document',
     detail:
-      'Extract the pages you name into a new file — or make one file per page and get them back as a ZIP.',
+      'Extract the pages you name into a new file — or make one file per page and share them individually.',
     category: 'Edit',
     icon: 'cut-outline',
     input: 'pdf',
@@ -167,7 +169,14 @@ export const PDF_TOOLS: PdfTool[] = [
     icon: 'trash-outline',
     input: 'pdf',
     options: [
-      { ...pagesAll, label: 'Pages to remove', hint: 'Everything else is kept.' } as ToolOption,
+      {
+        ...pagesAll,
+        label: 'Pages to remove',
+        hint: 'For example 2, 5-7. Everything you do not name is kept.',
+        // Never "all": a delete that removes the whole document on a stray tap
+        // is not a default, it is a trap.
+        default: '',
+      } as ToolOption,
     ],
     output: { extension: 'pdf', suffix: '-edited' },
   },
@@ -200,18 +209,8 @@ export const PDF_TOOLS: PdfTool[] = [
     icon: 'refresh-outline',
     input: 'pdf',
     options: [
+      { kind: 'rotation', id: 'angle', label: 'Turn the pages', default: '90' },
       pagesAll,
-      {
-        kind: 'choice',
-        id: 'angle',
-        label: 'Turn',
-        default: '90',
-        choices: [
-          { value: '90', label: '90° right' },
-          { value: '180', label: '180°' },
-          { value: '270', label: '90° left' },
-        ],
-      },
     ],
     output: { extension: 'pdf', suffix: '-rotated' },
   },
@@ -626,6 +625,26 @@ export function searchTools(query: string): PdfTool[] {
 }
 
 /** Default values for a tool's options, ready to hand to the engine. */
+export const ROTATIONS = [0, 90, 180, 270] as const;
+
+/** "90° clockwise" — never "90", which means nothing on its own. */
+export function describeRotation(degrees: number | string): string {
+  const value = ((Number(degrees) % 360) + 360) % 360;
+
+  switch (value) {
+    case 0:
+      return 'no turn';
+    case 90:
+      return '90° clockwise';
+    case 180:
+      return 'half a turn';
+    case 270:
+      return '90° anticlockwise';
+    default:
+      return `${value}°`;
+  }
+}
+
 /**
  * The settings, in one line, next to the button that acts on them.
  *
@@ -680,6 +699,10 @@ export function summariseOptions(tool: PdfTool, options: Record<string, string>)
         parts.push(count > 0 ? `${count} ${count === 1 ? 'page' : 'pages'} in order` : 'no order yet');
         break;
       }
+      case 'rotation': {
+        parts.push(describeRotation(value || option.default));
+        break;
+      }
     }
   }
 
@@ -694,6 +717,7 @@ export function defaultsFor(tool: PdfTool): Record<string, string> {
       case 'range':
       case 'choice':
       case 'text':
+      case 'rotation':
         values[option.id] = option.default ?? '';
         break;
       case 'order':

@@ -45,6 +45,7 @@ import { ThemeProvider } from '@/theme/ThemeProvider';
 
 import PdfArenaScreen from '@/app/(app)/pdf/index';
 import { ResultCard } from '@/pdf/components/ResultCard';
+import { ToolField } from '@/pdf/components/ToolControls';
 import PdfToolScreen from '@/app/(app)/pdf/[toolId]';
 import PdfViewerScreen from '@/app/(app)/pdf/viewer';
 
@@ -213,5 +214,58 @@ describe('what a tool hands back', () => {
 
     expect(screen.getByText('The text · long-press to copy')).toBeTruthy();
     expect(screen.getByText(/quick brown fox/)).toBeTruthy();
+  });
+});
+
+describe('turning a page', () => {
+  const rotation = { kind: 'rotation' as const, id: 'angle', label: 'Turn the pages', default: '90' };
+
+  it('offers arrows, not a menu of degrees', async () => {
+    const onChange = jest.fn();
+    await wrap(
+      <ToolField
+        option={rotation}
+        value="90"
+        onChange={onChange}
+        pageCount={4}
+      />,
+    );
+
+    expect(screen.getByLabelText('Turn clockwise')).toBeTruthy();
+    expect(screen.getByLabelText('Turn anticlockwise')).toBeTruthy();
+    expect(screen.getByText('90° clockwise')).toBeTruthy();
+  });
+
+  it('turns a quarter at a time, both ways, and wraps', async () => {
+    const onChange = jest.fn();
+    await wrap(
+      <ToolField option={rotation} value="90" onChange={onChange} pageCount={4} />,
+    );
+
+    await fireEvent.press(screen.getByLabelText('Turn clockwise'));
+    expect(onChange).toHaveBeenLastCalledWith('180');
+
+    onChange.mockClear();
+    await fireEvent.press(screen.getByLabelText('Turn anticlockwise'));
+    expect(onChange).toHaveBeenLastCalledWith('0');
+  });
+
+  it('wraps round rather than refusing to go further', async () => {
+    const onChange = jest.fn();
+    await wrap(
+      <ToolField option={rotation} value="0" onChange={onChange} pageCount={4} />,
+    );
+
+    await fireEvent.press(screen.getByLabelText('Turn anticlockwise'));
+    expect(onChange).toHaveBeenLastCalledWith('270');
+  });
+
+  it('says plainly when nothing would turn', async () => {
+    await wrap(
+      <ToolField option={rotation} value="0" onChange={() => {}} pageCount={4} />,
+    );
+
+    expect(screen.getByText('No turn yet')).toBeTruthy();
+    expect(screen.getByText('Tap an arrow to turn the page.')).toBeTruthy();
   });
 });

@@ -22,7 +22,7 @@ all original. Nothing was copied.
 | 2 | Split | **Split** | Page range → one PDF, or one PDF per page in a ZIP |
 | 3 | Delete | **Delete pages** | Range → the same document without those pages |
 | 4 | Rearrange | **Rearrange** | Tap pages in the new order; a numbered list builds up |
-| 5 | Rotate | **Rotate** | Choose 90 / 180 / 270, range, with page 1 previewed at that exact turn |
+| 5 | Rotate | **Rotate** | Arrows either side of the page turn it a quarter at a time, both ways, previewed live |
 | 6 | Sign | **Sign** | Draw a signature, place it on a page, embed it |
 | 7 | Watermark | **Watermark** | Text, opacity, angle, size, range |
 | 8 | Page numbers | **Page numbers** | `{n}` format, six positions, start number, size |
@@ -38,7 +38,7 @@ all original. Nothing was copied.
 | 18 | Image to PDF | **From images** | Each image a page, fit or A4 |
 | 19 | PDF to ZIP | **To ZIP** | One single-page PDF per page, zipped |
 | 20 | Extract images | **Extract images** | Original image objects pulled out at full size, one file each, inherited resources included |
-| 21 | PDF to Text | **To text** | Text layer shown in the app, selectable and copyable, plus a `.txt` to share |
+| 21 | PDF to Text | **To text** | Text layer in any script, shown in the app and copied to a UTF-8 `.txt` |
 | — | Viewer | **Viewer** | Paged viewer, find with highlights, print, share; opened from any file card |
 | — | History | **Result card** | Gallery of what was made, each picture openable and shareable |
 | — | Settings | **None yet** | Deliberately absent: nothing in this feature needs configuring |
@@ -73,6 +73,25 @@ ancestor page node** rather than stored on the page; extraction read only the pa
 nothing on exactly the documents people care about. And compression could hand back a file
 that was the *same size or larger* while calling it compressed — it now measures, and returns
 the original unchanged with a plain explanation when the work does not pay off.
+
+## Other languages
+
+Two things decide whether a Hindi, Arabic or Chinese document comes out readable, and both
+were wrong at first:
+
+- **The read itself.** A layout-aware text stripper throws — or returns nothing — when a font
+  carries no Unicode map, which is routine in CJK, Arabic and Indic files. Each page is now
+  read twice: laid out first, and if that yields nothing, straight from the glyph stream
+  (`processTextPosition`), which skips the layout engine entirely. A page that defeats both is
+  named in the result rather than silently dropped.
+- **The file's encoding.** The `.txt` is written as UTF-8 **with a byte order mark**. Without
+  it, Windows editors and several Android viewers fall back to a single-byte code page and
+  render Devanagari, Arabic or Han as mojibake — perfect text, unreadable file.
+
+Text is normalised to NFC (so an accented Latin letter stops arriving as two code points),
+control characters and soft hyphens are dropped, nothing else is touched. The word count
+switches to characters when the script does not separate words with spaces, because a Chinese
+page otherwise reports "1 word".
 
 ## Architecture
 

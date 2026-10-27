@@ -20,6 +20,7 @@ import com.tom_roush.pdfbox.pdmodel.graphics.form.PDFormXObject
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import com.tom_roush.pdfbox.text.PDFTextStripper
+import com.tom_roush.pdfbox.text.TextPosition
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipOutputStream
@@ -88,7 +89,10 @@ object PdfConvert {
       }
 
       val first = images.firstOrNull()
-        ?: throw PdfOpen.PdfFailure("No pages were chosen.", PdfOpen.PdfFailure.Kind.RANGE)
+        ?: run {
+          PdfFiles.deleteTree(folder)
+          throw PdfOpen.PdfFailure("No pages were chosen.", PdfOpen.PdfFailure.Kind.RANGE)
+        }
 
       PdfEngine.outcome(
         first,
@@ -330,42 +334,211 @@ object PdfConvert {
 
   /* -------------------------------------------------------------- text --- */
 
+  /**
+   * The text layer, in whatever language the document is written in.
+   *
+   * Two passes per page, because a single pass is exactly what fails on
+   * non-Latin documents. The layout-aware stripper is correct but throws (or
+   * returns nothing) when a font carries no Unicode map — common in Chinese,
+   * Japanese, Korean, Arabic and Indic files. When that happens the page is
+   * read again straight from the glyph stream, which recovers whatever the
+   * file can actually say instead of losing the whole document.
+   *
+   * The file is written as UTF-8 with a byte order mark. Without it, Windows
+   * editors and several Android text viewers assume the system code page and
+   * show Hindi, Arabic or Chinese as mojibake — which reads as "extraction is
+   * broken" even when the words were perfect.
+   */
   fun toText(context: Context, request: PdfRequest): PdfOutcome {
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { document, _ ->
       val chosen = PdfEngine.pages(request.option("pages", "all"), document.numberOfPages)
-      val stripper = PDFTextStripper()
-      stripper.sortByPosition = true
+      val blank = mutableListOf<Int>()
+      val unreadable = mutableListOf<Int>()
 
-      val contiguous = chosen.size == chosen.last() - chosen.first() + 1
-      val text = if (contiguous) {
-        stripper.startPage = chosen.first()
-        stripper.endPage = chosen.last()
-        stripper.getText(document)
-      } else {
-        // "1, 5" is two pages, not the range between them.
-        chosen.joinToString("\n\n") { page ->
-          stripper.startPage = page
-          stripper.endPage = page
-          stripper.getText(document).trimEnd()
-        } + "\n"
+      val pages = chosen.map { pageNumber ->
+        val page = readPage(document, pageNumber)
+        if (page.isBlank() && pageHasTextObjects(document, pageNumber)) unreadable.add(pageNumber)
+        if (page.isBlank()) blank.add(pageNumber)
+        tidy(page)
       }
-      val output = PdfEngine.output(context, request)
-      output.writeText(text, Charsets.UTF_8)
 
-      val words = text.split(Regex("\\s+")).count { it.isNotBlank() }
-      if (words == 0) {
-        PdfEngine.outcome(
-          output,
-          0,
-          "No text layer found",
-          listOf("This looks like a scanned document: the pages are pictures, so there is no text to copy."),
-          text = "",
+      val text = pages.filter { it.isNotEmpty() }.joinToString("\n\n")
+
+      val output = PdfEngine.output(context, request)
+      // The mark, then the bytes. Readers that need it get it; readers that do
+      // not ignore it silently.
+      output.writeBytes(
+        byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + text.toByteArray(Charsets.UTF_8),
+      )
+
+      val warnings = mutableListOf<String>()
+
+      when {
+        text.isEmpty() -> warnings.add(
+          "No text layer on the pages you chose. This looks like a scan: the pages are pictures, so there is nothing to copy. PDF to images turns them into pictures you can share.",
         )
+
+        else -> {
+          if (unreadable.isNotEmpty()) {
+            warnings.add(
+              "Page${if (unreadable.size == 1) "" else "s"} ${listOfPages(unreadable)}: characters are drawn there, but the file stores them without a character map. That is a limitation of how the document was made, not a scan — the pages that did read still come through.",
+            )
+          }
+
+          val blankAndReachable = blank.filter { it !in unreadable }
+          if (blankAndReachable.isNotEmpty()) {
+            warnings.add(
+              "Page${if (blankAndReachable.size == 1) "" else "s"} ${listOfPages(blankAndReachable)} had no text — most likely a picture of a page.",
+            )
+          }
+        }
+      }
+
+      val summary = if (text.isEmpty()) {
+        "No text layer found"
       } else {
+        "${describe(text)} from ${chosen.size} ${if (chosen.size == 1) "page" else "pages"}"
+      }
+
+      PdfEngine.outcome(
+        output,
+        if (text.isEmpty()) 0 else chosen.size,
+        summary,
+        warnings,
         // The screen shows the words straight away; the long file is capped so
         // a 900-page book never crosses the bridge in one go.
-        PdfEngine.outcome(output, chosen.size, "$words words from ${chosen.size} pages", text = text.take(400_000))
-      }
+        text = text.take(400_000),
+      )
     }
   }
+
+  /** One page, laid out if possible, raw if not. */
+  private fun readPage(document: PDDocument, pageNumber: Int): String {
+    val laidOut = try {
+      PDFTextStripper()
+        .apply {
+          sortByPosition = true
+          startPage = pageNumber
+          endPage = pageNumber
+        }
+        .getText(document)
+    } catch (error: Throwable) {
+      ""
+    }
+
+    if (laidOut.isNotBlank()) return laidOut
+
+    return try {
+      val collector = Glyphs()
+      collector.startPage = pageNumber
+      collector.endPage = pageNumber
+      collector.getText(document)
+      collector.collected.toString()
+    } catch (error: Throwable) {
+      ""
+    }
+  }
+
+  /**
+   * Reads the glyph stream in order, skipping the layout pass entirely.
+   *
+   * `processTextPosition` is the one hook the stripper calls for every glyph;
+   * collecting there means a page whose widths or Unicode map break the layout
+   * engine still gives up its characters.
+   */
+  private class Glyphs : PDFTextStripper() {
+    val collected = StringBuilder()
+
+    override fun processTextPosition(text: TextPosition?) {
+      val unicode = text?.unicode ?: return
+      if (unicode.isEmpty()) return
+
+      // Glyphs from different lines must not run together into one word.
+      val line = text.yDirAdj
+      if (hasLine && kotlin.math.abs(line - lastLine) > text.heightDir.coerceAtLeast(1f) / 2f) {
+        collected.append('\n')
+      }
+
+      hasLine = true
+      lastLine = line
+      collected.append(unicode)
+    }
+
+    override fun writeString(text: String?, positions: MutableList<TextPosition>?) {
+      // Nothing: `collected` already has every glyph, in order.
+    }
+
+    private var hasLine = false
+    private var lastLine = 0f
+  }
+
+  /** True when the page draws characters, whether or not they can be decoded. */
+  private fun pageHasTextObjects(document: PDDocument, pageNumber: Int): Boolean {
+    return try {
+      val page = document.getPage(pageNumber - 1)
+      val contents = page.cosObject.getDictionaryObject(COSName.CONTENTS)
+      // A content stream that exists at all is worth attempting; the readable
+      // pass already said it produced nothing.
+      contents != null
+    } catch (error: Throwable) {
+      false
+    }
+  }
+
+  /**
+   * Removes what a text editor cannot show, and nothing else.
+   *
+   * Non-Latin scripts are preserved exactly: NFC only composes characters that
+   * belong together, so Hindi, Arabic and Chinese survive untouched while
+   * accented Latin stops arriving as two code points.
+   */
+  private fun tidy(raw: String): String {
+    if (raw.isEmpty()) return ""
+
+    val normalised = java.text.Normalizer.normalize(raw, java.text.Normalizer.Form.NFC)
+    val cleaned = StringBuilder(normalised.length)
+
+    normalised.forEach { character ->
+      when {
+        character == '\n' || character == '\t' -> cleaned.append(character)
+        character == '\r' -> Unit
+        character == '\u00AD' -> Unit
+        character == '\uFEFF' -> Unit
+        character.code < 0x20 || character.code == 0x7F -> Unit
+        character == '\uFFFD' -> Unit
+        else -> cleaned.append(character)
+      }
+    }
+
+    return cleaned.toString()
+      .replace(Regex("[ \t]+\n"), "\n")
+      .replace(Regex("\n{3,}"), "\n\n")
+      .trim()
+  }
+
+  /**
+   * "1,204 words" for languages that separate them, "3,512 characters" for the
+   * ones that do not. A Chinese page counted by spaces reads as one word.
+   */
+  private fun describe(text: String): String {
+    val characters = text.count { !it.isWhitespace() }
+    val spaces = text.count { it == ' ' }
+    val words = text.split(Regex("\\s+")).count { it.isNotBlank() }
+
+    val runsTogether = characters > 400 && spaces * 20 < characters
+    return if (runsTogether) {
+      "${grouped(characters)} characters"
+    } else {
+      "${grouped(words)} ${if (words == 1) "word" else "words"}"
+    }
+  }
+
+  private fun grouped(value: Int): String =
+    value.toString().reversed().chunked(3).joinToString(",").reversed()
+
+  private fun listOfPages(pages: List<Int>): String = when {
+    pages.size == 1 -> "${pages.first()}"
+    else -> pages.take(6).joinToString(", ") + if (pages.size > 6) " and ${pages.size - 6} more" else ""
+  }
 }
+

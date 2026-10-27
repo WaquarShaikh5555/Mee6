@@ -219,7 +219,11 @@ class PdfArenaModule : Module() {
           throw failure
         }
 
-        val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
+        // PrintManager wants the Activity that owns the job; the application
+        // context makes the system print dialog fail to attach on some builds.
+        val activity = appContext.currentActivity
+          ?: throw PdfOpen.PdfFailure("Printing needs the app to be open.", PdfOpen.PdfFailure.Kind.OTHER)
+        val manager = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
         manager.print(jobName.ifBlank { printable.name }, PrintPdfAdapter(printable), null)
 
         // The job runs after this returns; hand the screen nothing to wait on.

@@ -17,7 +17,7 @@ import {
   signatureJson,
   type Stroke,
 } from '../signature';
-import type { Choice, ToolOption } from '../catalog';
+import { describeRotation, type Choice, type ToolOption } from '../catalog';
 import { PageThumb } from './PageThumb';
 import { SignaturePad } from './SignaturePad';
 
@@ -54,6 +54,8 @@ export function ToolField({ option, ...rest }: Omit<FieldProps, 'option'> & { op
       return <OrderField option={option} {...rest} />;
     case 'bookmarks':
       return <BookmarksField option={option} {...rest} />;
+    case 'rotation':
+      return <RotationField option={option} {...rest} />;
     case 'signature':
       return <SignatureField option={option} {...rest} />;
     case 'note':
@@ -151,35 +153,6 @@ function ChoiceField({ option, value, onChange, uri, password }: FieldProps) {
         </Text>
       ) : null}
 
-      {/* Rotation is the one control whose result nobody can picture from the
-          words, so it is shown: page 1, turned by exactly what is selected. */}
-      {option.id === 'angle' && uri ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.space.md,
-            paddingTop: theme.space.xs,
-          }}
-        >
-          <PageThumb
-            uri={uri}
-            page={0}
-            width={92}
-            rotate={Number(selected?.value ?? 0)}
-            password={password}
-            label={`Page 1 turned ${Number(selected?.value ?? 0)} degrees`}
-          />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="footnote" tone="secondary">
-              Page 1, turned {Number(selected?.value ?? 0)}°
-            </Text>
-            <Text variant="caption" tone="tertiary">
-              The file changes only when you tap the button. Try each turn until the preview looks right.
-            </Text>
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -423,6 +396,112 @@ function ToggleField({ option, value, onChange }: FieldProps) {
 }
 
 /* ------------------------------------------------------------------ order --- */
+
+/* --------------------------------------------------------------- rotation --- */
+
+/**
+ * Turning a page, with the page.
+ *
+ * Three chips reading 90 / 180 / 270 are a menu of numbers; nobody thinks in
+ * numbers about this. Arrows either side of the page turn it in the direction
+ * they point, and the preview turns with them, so what the button will do is
+ * visible before it is pressed.
+ */
+function RotationField({ option, value, onChange, uri, password }: FieldProps) {
+  const theme = useTheme();
+  const degrees = ((Number(value) % 360) + 360) % 360;
+
+  const turn = (direction: 1 | -1) => {
+    tapFeedback();
+    onChange(String((degrees + direction * 90 + 360) % 360));
+  };
+
+  const arrow = (
+    direction: 1 | -1,
+    label: string,
+    icon: 'arrow-undo' | 'arrow-redo',
+  ) => (
+    <Pressable
+      onPress={() => turn(direction)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={`Turns the pages ${direction === 1 ? 'clockwise' : 'anticlockwise'} by a quarter turn`}
+      hitSlop={theme.space.sm}
+      style={({ pressed }) => ({
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: pressed ? theme.colors.accent : theme.colors.border,
+        backgroundColor: pressed ? theme.colors.accentSubtle : theme.colors.surface,
+      })}
+    >
+      <Ionicons
+        name={`${icon}-outline`}
+        size={26}
+        color={theme.colors.text}
+        style={{ transform: direction === 1 ? undefined : [{ scaleX: -1 }] }}
+      />
+    </Pressable>
+  );
+
+  return (
+    <View style={{ gap: theme.space.md }}>
+      <Text variant="subhead" tone="secondary">
+        {option.label}
+      </Text>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.lg }}>
+        {arrow(-1, 'Turn anticlockwise', 'arrow-undo')}
+
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          {uri ? (
+            <PageThumb
+              uri={uri}
+              page={0}
+              width={128}
+              rotate={degrees}
+              password={password}
+              label={`Page 1, turned ${describeRotation(degrees)}`}
+            />
+          ) : (
+            <View
+              style={{
+                width: 128,
+                height: 172,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                backgroundColor: theme.colors.surfaceSunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text variant="caption" tone="tertiary" align="center">
+                Choose a document
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {arrow(1, 'Turn clockwise', 'arrow-redo')}
+      </View>
+
+      <View style={{ alignItems: 'center', gap: 2 }}>
+        <Text variant="subhead" tabular>
+          {degrees === 0 ? 'No turn yet' : describeRotation(degrees)}
+        </Text>
+        <Text variant="caption" tone="tertiary" align="center">
+          {degrees === 0
+            ? 'Tap an arrow to turn the page.'
+            : 'The page shown is what will be written. Tap an arrow again to keep turning.'}
+        </Text>
+      </View>
+    </View>
+  );
+}
 
 function OrderField({ option, value, onChange, pageCount }: FieldProps) {
   const theme = useTheme();

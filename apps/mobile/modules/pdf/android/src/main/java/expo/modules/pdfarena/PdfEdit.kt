@@ -114,7 +114,18 @@ object PdfEdit {
   fun deletePages(context: Context, request: PdfRequest): PdfOutcome {
     return PdfOpen.withInput(context, request.inputUris.first(), request.password) { source, _ ->
       val count = source.numberOfPages
-      val removed = PdfEngine.pages(request.option("pages"), count).toSet()
+      val named = request.option("pages")
+
+      // An empty range means "every page" to the parser, which for this tool
+      // would mean deleting the document. Ask for the pages instead.
+      if (named.isEmpty() || named == "all" || named == "*") {
+        throw PdfOpen.PdfFailure(
+          "Name the pages to remove. Everything you do not name is kept.",
+          PdfOpen.PdfFailure.Kind.RANGE,
+        )
+      }
+
+      val removed = PdfEngine.pages(named, count).toSet()
       val kept = (1..count).filter { it !in removed }
 
       if (kept.isEmpty()) {
@@ -222,8 +233,12 @@ object PdfEdit {
           val drawWidth = box.width * widthPercent / 100f
           val drawHeight = drawWidth * bitmap.height / bitmap.width
 
-          val x = if (corner.contains("right")) box.width - margin - drawWidth else margin
-          val y = if (corner.contains("top")) box.height - margin - drawHeight else margin
+          // A crop box need not start at the origin; a signature placed from
+          // (0,0) lands outside the visible page on those documents.
+          val left = box.lowerLeftX
+          val bottom = box.lowerLeftY
+          val x = if (corner.contains("right")) left + box.width - margin - drawWidth else left + margin
+          val y = if (corner.contains("top")) bottom + box.height - margin - drawHeight else bottom + margin
 
           PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true)
             .use { stream -> stream.drawImage(image, x, y, drawWidth, drawHeight) }
@@ -354,8 +369,8 @@ object PdfEdit {
         }
         val width = font.getStringWidth(shown) / 1000f * fontSize
 
-        val centreX = box.width / 2f
-        val centreY = box.height / 2f
+        val centreX = box.lowerLeftX + box.width / 2f
+        val centreY = box.lowerLeftY + box.height / 2f
 
         PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true)
           .use { stream ->
@@ -415,12 +430,15 @@ object PdfEdit {
         val width = font.getStringWidth(centred(text)) / 1000f * size
         val margin = 28f
 
+        val left = box.lowerLeftX
+        val bottom = box.lowerLeftY
+
         val x = when {
-          position.endsWith("left") -> margin
-          position.endsWith("center") -> (box.width - width) / 2f
-          else -> box.width - margin - width
+          position.endsWith("left") -> left + margin
+          position.endsWith("center") -> left + (box.width - width) / 2f
+          else -> left + box.width - margin - width
         }
-        val y = if (position.startsWith("top")) box.height - margin else margin
+        val y = if (position.startsWith("top")) bottom + box.height - margin else bottom + margin
 
         PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true)
           .use { stream ->

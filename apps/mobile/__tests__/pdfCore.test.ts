@@ -171,9 +171,17 @@ describe('the tool catalog', () => {
   });
 
   it('defaults to every page rather than a surprise subset', () => {
+    // Delete is the one exception: defaulting it to "all" means the first tap
+    // would try to remove the entire document.
     for (const tool of PDF_TOOLS) {
       const range = tool.options.find((option) => option.kind === 'range');
-      if (range) expect(defaultsFor(tool)[range.id]).toBe('all');
+      if (!range) continue;
+
+      const expected = tool.id === 'delete' ? '' : 'all';
+      expect({ tool: tool.id, pages: defaultsFor(tool)[range.id] }).toEqual({
+        tool: tool.id,
+        pages: expected,
+      });
     }
   });
 
@@ -224,10 +232,10 @@ describe('the settings line', () => {
     expect(rotate).not.toBeNull();
 
     const defaults = defaultsFor(rotate!);
-    expect(summariseOptions(rotate!, defaults)).toBe('90° right · all pages');
+    expect(summariseOptions(rotate!, defaults)).toBe('90° clockwise · all pages');
 
     expect(summariseOptions(rotate!, { ...defaults, angle: '270', pages: '2-3' })).toBe(
-      '90° left · pages 2-3',
+      '90° anticlockwise · pages 2-3',
     );
   });
 
