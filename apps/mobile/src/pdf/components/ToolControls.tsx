@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Platform, Pressable, Switch, TextInput, View } from 'react-native';
+import { Image, Modal, Platform, Pressable, Switch, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { Badge } from '@/ui/Badge';
@@ -893,7 +894,10 @@ function parseBookmarks(value: string): Bookmark[] {
 function SignatureField({ value, onChange, pageCount, uri, password }: FieldProps) {
   const theme = useTheme();
   const [payload, setPayload] = useState<SignaturePayload | null>(() => parsePayload(value));
-  const [stage, setStage] = useState<'none' | 'draw' | 'place'>('none');
+  // One modal, two stages: the pad, then the page. Two modals at once is what
+  // made "Use" appear to do nothing on Android.
+  const [open, setOpen] = useState(false);
+  const [stage, setStage] = useState<'draw' | 'place'>('draw');
 
   // The tool screen owns the value; this keeps the local copy honest when the
   // screen clears the options after a run.
@@ -936,7 +940,10 @@ function SignatureField({ value, onChange, pageCount, uri, password }: FieldProp
 
       {payload && ink ? (
         <Pressable
-          onPress={() => setStage('place')}
+          onPress={() => {
+            setStage('place');
+            setOpen(true);
+          }}
           accessibilityRole="button"
           accessibilityLabel="Change where the signature goes"
           style={{
@@ -955,7 +962,10 @@ function SignatureField({ value, onChange, pageCount, uri, password }: FieldProp
       ) : null}
 
       <Pressable
-        onPress={() => setStage('draw')}
+        onPress={() => {
+          setStage('draw');
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={payload ? 'Change the signature' : 'Add your signature'}
         style={({ pressed }) => ({
@@ -1003,30 +1013,43 @@ function SignatureField({ value, onChange, pageCount, uri, password }: FieldProp
         {isSigned(payload) ? describePayload(payload) : 'No signature placed yet.'}
       </Text>
 
-      <SignatureSheet
-        visible={stage === 'draw'}
-        initial={payload}
-        onCancel={() => setStage('none')}
-        onDone={(next) => {
-          commit({ ...next, placements: payload?.placements ?? [] });
-          // Straight to placement: a signature nobody placed signs nothing.
-          setStage('place');
-        }}
-      />
-
-      <SignaturePlacementSheet
-        visible={stage === 'place'}
-        ink={ink}
-        uri={uri}
-        password={password}
-        pageCount={pageCount}
-        initial={payload?.placements ?? []}
-        onCancel={() => setStage('none')}
-        onDone={(placements) => {
-          if (payload) commit({ ...payload, placements });
-          setStage('none');
-        }}
-      />
+      <Modal
+        visible={open}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setOpen(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
+          {stage === 'draw' ? (
+            <SignatureSheet
+              inline
+              visible
+              initial={payload}
+              onCancel={() => setOpen(false)}
+              onDone={(next) => {
+                commit({ ...next, placements: payload?.placements ?? [] });
+                // Straight to placement: a signature nobody placed signs nothing.
+                setStage('place');
+              }}
+            />
+          ) : (
+            <SignaturePlacementSheet
+              inline
+              visible
+              ink={ink}
+              uri={uri}
+              password={password}
+              pageCount={pageCount}
+              initial={payload?.placements ?? []}
+              onCancel={() => setOpen(false)}
+              onDone={(placements) => {
+                if (payload) commit({ ...payload, placements });
+                setOpen(false);
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }

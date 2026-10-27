@@ -16,6 +16,8 @@ type ResultCardProps = {
   /** The size of the source, so a saving can be stated rather than guessed. */
   beforeBytes?: number;
   onShare: () => void;
+  /** Writes the result into the phone's Downloads folder. */
+  onSave?: () => Promise<string | null>;
   onOpen?: () => void;
   onDone: () => void;
   /** Removes the file this tool just wrote. The input is never touched. */
@@ -44,6 +46,7 @@ export function ResultCard({
   tookMs,
   beforeBytes = 0,
   onShare,
+  onSave,
   onOpen,
   onDone,
   onDelete,
@@ -51,6 +54,9 @@ export function ResultCard({
   const theme = useTheme();
   const [preview, setPreview] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
 
   const extension = result.outputName.split('.').pop()?.toLowerCase() ?? '';
   const saving = beforeBytes > 0 ? formatSaving(beforeBytes, result.sizeBytes) : null;
@@ -206,10 +212,47 @@ export function ResultCard({
         </View>
       ) : null}
 
+      {onSave ? (
+        <View style={{ gap: theme.space.xs }}>
+          <Button
+            label={writing ? 'Saving…' : savedTo ? 'Saved to your phone' : 'Save to my phone'}
+            icon={savedTo ? 'checkmark-circle-outline' : 'download-outline'}
+            variant={savedTo ? 'secondary' : 'primary'}
+            loading={writing}
+            onPress={() => {
+              if (writing) return;
+              setWriting(true);
+              setSaveProblem(null);
+
+              void onSave()
+                .then((where) => {
+                  if (where) setSavedTo(where);
+                  else setSaveProblem('The phone would not accept the file. Share it instead.');
+                })
+                .catch(() => setSaveProblem('The file could not be saved. Share it instead.'))
+                .finally(() => setWriting(false));
+            }}
+          />
+
+          {savedTo ? (
+            <Text variant="footnote" tone="success" align="center" style={{ paddingTop: 2 }}>
+              Saved to {savedTo} — open Files to see it.
+            </Text>
+          ) : null}
+
+          {saveProblem ? (
+            <Text variant="footnote" tone="warning" align="center">
+              {saveProblem}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={{ flexDirection: 'row', gap: theme.space.md }}>
         <Button
           label="Share"
           icon="share-outline"
+          variant={onSave ? 'secondary' : 'primary'}
           onPress={onShare}
           fullWidth={false}
           size="md"

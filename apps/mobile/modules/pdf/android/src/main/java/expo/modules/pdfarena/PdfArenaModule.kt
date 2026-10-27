@@ -255,6 +255,45 @@ class PdfArenaModule : Module() {
       attempt { PdfSignatures.forget(context, uri) }
     }
 
+    /**
+     * Puts one or more results in the phone's Downloads folder.
+     *
+     * A tool that makes forty pictures puts them in one folder named after the
+     * document, so the phone's Files app shows a folder rather than a mess.
+     */
+    AsyncFunction("saveToDownloads") { uris: List<String>, name: String, folder: String? ->
+      attempt {
+        if (uris.isEmpty()) {
+          throw PdfOpen.PdfFailure("There is nothing to save.", PdfOpen.PdfFailure.Kind.OTHER)
+        }
+
+        val saved = mutableListOf<String>()
+
+        uris.forEachIndexed { index, uri ->
+          val displayName = if (uris.size == 1 || index == 0) {
+            name
+          } else {
+            // Keep the engine's names for the rest: page-002.png, image-003.png.
+            Uri.decode(Uri.parse(uri).lastPathSegment ?: "result-$index")
+          }
+
+          saved.add(
+            PdfFiles.saveToDownloads(
+              context,
+              Uri.parse(uri),
+              if (uris.size == 1) name else displayName,
+              if (uris.size == 1) null else folder,
+            ),
+          )
+        }
+
+        mapOf(
+          "saved" to saved.size,
+          "where" to if (uris.size == 1) saved.first() else "Download/Shaikh's/${folder ?: name}",
+        )
+      }
+    }
+
     /** Deletes a result this module created, and refuses anything else. */
     AsyncFunction("deleteOutput") { uri: String ->
       attempt {

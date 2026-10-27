@@ -43,13 +43,15 @@ import {
 
 type Props = {
   visible: boolean;
+  /** Rendered inside someone else's modal rather than opening its own. */
+  inline?: boolean;
   /** The signature to start from, so "Change" opens what you had. */
   initial: SignaturePayload | null;
   onCancel: () => void;
   onDone: (ink: SignatureInk) => void;
 };
 
-export function SignatureSheet({ visible, initial, onCancel, onDone }: Props) {
+export function SignatureSheet({ visible, inline = false, initial, onCancel, onDone }: Props) {
   const theme = useTheme();
 
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -123,9 +125,9 @@ export function SignatureSheet({ visible, initial, onCancel, onDone }: Props) {
     onDone(ink);
   }
 
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
+  const body = (
+    <>
+      <View style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
         <View
           style={{
             flexDirection: 'row',
@@ -384,7 +386,17 @@ export function SignatureSheet({ visible, initial, onCancel, onDone }: Props) {
             </Text>
           </Pressable>
         </ScrollView>
-      </SafeAreaView>
+      </View>
+    </>
+  );
+
+  // Two full-screen modals swapped in one frame is a modal Android drops on
+  // the floor; one host switching its contents is reliable everywhere.
+  if (inline) return body;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>{body}</SafeAreaView>
     </Modal>
   );
 }

@@ -14,10 +14,11 @@ import { defaultsFor, findTool, summariseOptions } from '@/pdf/catalog';
 import { pickerFor, type PickedFile } from '@/pdf/documents';
 import { isSigned, parsePayload } from '@/pdf/signature';
 import { describeRangeError, parseRange } from '@/pdf/ranges';
-import { mimeFor, outputNameFor } from '@/pdf/format';
+import { baseName, mimeFor, outputNameFor } from '@/pdf/format';
 import { usePdfDocument } from '@/pdf/useDocument';
 import { shareFile, useToolRun } from '@/pdf/useToolRun';
-import { deleteOutput, type PdfResult } from '@/pdf/engine';
+import { deleteOutput, saveToDownloads, type PdfResult } from '@/pdf/engine';
+import { successFeedback } from '@/lib/haptics';
 import { ComparePanel } from '@/pdf/components/ComparePanel';
 import { ErrorCard, ResultCard } from '@/pdf/components/ResultCard';
 import { FileCard } from '@/pdf/components/FileCard';
@@ -162,6 +163,27 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
     });
   };
 
+  /**
+   * Writes the result into Downloads, and says where.
+   *
+   * A tool that made many files (pages to images, extracted pictures) gets one
+   * folder named after the document, rather than forty files loose in Downloads.
+   */
+  const keep = async (result: PdfResult): Promise<string | null> => {
+    try {
+      const answer = await saveToDownloads(
+        result.outputUris,
+        result.outputName,
+        result.outputUris.length > 1 ? baseName(result.outputName) : undefined,
+      );
+
+      successFeedback();
+      return answer.where;
+    } catch {
+      return null;
+    }
+  };
+
   const share = async (result: PdfResult) => {
     try {
       const ok = await shareFile(result.outputUri, result.outputName, mimeFor(result.outputName));
@@ -225,6 +247,7 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
             result={state.result}
             tookMs={state.tookMs}
             beforeBytes={files[0]?.size || doc.probe?.sizeBytes || 0}
+            onSave={() => keep(state.result)}
             onShare={() => void share(state.result)}
             onOpen={() =>
               router.push({

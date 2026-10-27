@@ -32,6 +32,8 @@ import { strokePath, type Placement, type SignatureInk, type Stroke } from '../s
 
 type Props = {
   visible: boolean;
+  /** Rendered inside someone else's modal rather than opening its own. */
+  inline?: boolean;
   ink: SignatureInk | null;
   uri: string;
   password?: string;
@@ -48,6 +50,7 @@ const DEFAULT_Y = 0.22;
 
 export function SignaturePlacementSheet({
   visible,
+  inline = false,
   ink,
   uri,
   password,
@@ -149,9 +152,8 @@ export function SignaturePlacementSheet({
     );
   };
 
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
+  const body = (
+      <View style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
         <View
           style={{
             flexDirection: 'row',
@@ -290,7 +292,14 @@ export function SignaturePlacementSheet({
             ) : null}
           </View>
         </View>
-      </SafeAreaView>
+      </View>
+  );
+
+  if (inline) return body;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>{body}</SafeAreaView>
     </Modal>
   );
 }

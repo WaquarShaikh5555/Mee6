@@ -167,6 +167,19 @@ second signature of the day is one tap.
 **One screen, 21 tools.** A tool is data: what it needs, which options it takes, how its
 output is named. Adding the 22nd tool means adding an entry, not a screen.
 
+### Where results live
+
+Everything is *written* to app storage: no permission, no half-finished file in a shared folder,
+and deleting a result can never touch the person's own documents.
+
+Everything is *kept* in `Download/Shaikh's/`, through the system Downloads collection on Android
+10 and later — no permission needed, and the file shows up in Files, in Downloads, and in every
+other app's share sheet. A tool that made many files (pages to images, extracted pictures) puts
+them in one folder named after the document instead of forty loose files.
+
+The result card leads with **Save to my phone** and confirms the path it used, because "where is
+it?" is the first question after "did it work", and a share sheet is not an answer to it.
+
 ### Why the engine is native
 
 Rotating a PDF, extracting its text, and encrypting it are not things a JavaScript bundle

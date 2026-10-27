@@ -1,7 +1,11 @@
 package expo.modules.pdfarena
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import java.io.File
@@ -171,6 +175,104 @@ object PdfFiles {
       FileOutputStream(target).use { output -> input.copyTo(output, 64 * 1024) }
     }
     return target
+  }
+
+  /**
+   * Puts a result where the phone keeps documents, and says where.
+   *
+   * Everything this feature writes lives in the app's own storage, which no
+   * file manager shows. That is the right place to *work*, and the wrong place
+   * to leave something: "where is the file?" has to have an answer. From
+   * Android 10 the Downloads collection takes the bytes without any permission,
+   * and the file appears in Files, in Downloads, and in the share sheet of every
+   * other app.
+   */
+  fun saveToDownloads(context: Context, uri: Uri, name: String, folder: String?): String {
+    val (file, temporary) = materialize(context, uri)
+
+    try {
+      val safeName = name
+        .replace(Regex("[\\\\/:*?\"<>|]"), "-")
+        .ifBlank { "document" }
+
+      val relative = "Download/Shaikh's" + (folder?.takeIf { it.isNotBlank() }?.let { "/$it" } ?: "")
+      val mime = mimeFor(safeName)
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+
+        val values = ContentValues().apply {
+          put(MediaStore.Downloads.DISPLAY_NAME, safeName)
+          put(MediaStore.Downloads.MIME_TYPE, mime)
+          put(MediaStore.Downloads.RELATIVE_PATH, relative)
+          put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+
+        val item = resolver.insert(collection, values)
+          ?: throw PdfOpen.PdfFailure(
+            "The phone would not create the file. Try Share instead.",
+            PdfOpen.PdfFailure.Kind.OTHER,
+          )
+
+        try {
+          resolver.openOutputStream(item)?.use { output ->
+            file.inputStream().use { input -> input.copyTo(output, 64 * 1024) }
+          } ?: throw PdfOpen.PdfFailure(
+            "The phone would not open the file for writing.",
+            PdfOpen.PdfFailure.Kind.OTHER,
+          )
+
+          values.clear()
+          values.put(MediaStore.Downloads.IS_PENDING, 0)
+          resolver.update(item, values, null, null)
+        } catch (error: Throwable) {
+          resolver.delete(item, null, null)
+          throw error
+        }
+
+        return "$relative/$safeName"
+      }
+
+      // Android 9 and older: the public Downloads folder, as a plain file.
+      @Suppress("DEPRECATION")
+      val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+      val target = File(File(downloads, "Shaikh's" + (folder?.let { "/$it" } ?: "")), safeName)
+      target.parentFile?.mkdirs()
+      copy(file, uniqueTarget(target))
+
+      return "Download/Shaikh's" + (folder?.let { "/$it" } ?: "") + "/$safeName"
+    } finally {
+      if (temporary) deleteQuietly(file)
+    }
+  }
+
+  /** Never overwrite: "Report.pdf" becomes "Report (2).pdf". */
+  private fun uniqueTarget(target: File): File {
+    if (!target.exists()) return target
+
+    val dot = target.name.lastIndexOf('.')
+    val stem = if (dot > 0) target.name.substring(0, dot) else target.name
+    val extension = if (dot > 0) target.name.substring(dot) else ""
+
+    var index = 2
+    var candidate = target
+    while (candidate.exists()) {
+      candidate = File(target.parentFile, "$stem ($index)$extension")
+      index += 1
+    }
+    return candidate
+  }
+
+  /** The type the phone needs to file something sensibly. */
+  fun mimeFor(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+    "pdf" -> "application/pdf"
+    "txt" -> "text/plain"
+    "zip" -> "application/zip"
+    "png" -> "image/png"
+    "jpg", "jpeg" -> "image/jpeg"
+    "webp" -> "image/webp"
+    else -> "application/octet-stream"
   }
 
   /** Deletes a file, or a folder and everything inside it. */

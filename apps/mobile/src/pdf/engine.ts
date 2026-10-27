@@ -104,6 +104,12 @@ type PdfArenaNativeModule = {
   saveSignature(payloadJson: string): Promise<{ uri: string; createdAt: number }>;
   loadSignatures(): Promise<{ uri: string; createdAt: number }[]>;
   deleteSignature(uri: string): Promise<boolean>;
+  /** Writes results into the phone's Downloads folder; returns where they went. */
+  saveToDownloads(
+    uris: string[],
+    name: string,
+    folder?: string | null,
+  ): Promise<{ saved: number; where: string }>;
   deleteOutput(uri: string): Promise<void>;
 };
 
@@ -284,6 +290,21 @@ export function loadSignatures(): Promise<{ uri: string; createdAt: number }[]> 
 
 export function deleteSignature(uri: string): Promise<boolean> {
   return guard(() => requireEngine().deleteSignature(uri));
+}
+
+/**
+ * Copies results into the phone's Downloads folder.
+ *
+ * The files this feature makes live in app storage, which no file manager
+ * shows — fine for working, useless for keeping. This is the "it is now a file
+ * on my phone" step, and it needs no permission on Android 10 or later.
+ */
+export function saveToDownloads(
+  uris: string[],
+  name: string,
+  folder?: string,
+): Promise<{ saved: number; where: string }> {
+  return guard(() => requireEngine().saveToDownloads(uris, name, folder ?? null));
 }
 
 export function deleteOutput(uri: string): Promise<void> {

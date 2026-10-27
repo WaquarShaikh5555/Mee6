@@ -311,3 +311,48 @@ describe('ink on a page', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('where the file goes', () => {
+  const result = {
+    outputUri: 'file:///data/user/0/app/files/pdf-arena/Contract-protected.pdf',
+    outputName: 'Contract-protected.pdf',
+    sizeBytes: 250_000,
+    pages: 4,
+    summary: 'Locked with a password',
+    warnings: [],
+    outputUris: ['file:///data/user/0/app/files/pdf-arena/Contract-protected.pdf'],
+    text: null,
+  };
+
+  it('offers a way onto the phone, not just a share sheet', async () => {
+    const onSave = jest.fn(async () => "Download/Shaikh's/Contract-protected.pdf");
+
+    await wrap(
+      <ResultCard result={result} tookMs={900} onShare={() => {}} onSave={onSave} onDone={() => {}} />,
+    );
+
+    const button = screen.getByText('Save to my phone');
+    expect(button).toBeTruthy();
+
+    await fireEvent.press(button);
+    await waitFor(() => expect(screen.getByText(/Saved to Download\/Shaikh's\/Contract-protected\.pdf/)).toBeTruthy());
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  it('says so when the phone refuses, and points at Share', async () => {
+    await wrap(
+      <ResultCard
+        result={result}
+        tookMs={900}
+        onShare={() => {}}
+        onSave={async () => null}
+        onDone={() => {}}
+      />,
+    );
+
+    await fireEvent.press(screen.getByText('Save to my phone'));
+    await waitFor(() =>
+      expect(screen.getByText('The phone would not accept the file. Share it instead.')).toBeTruthy(),
+    );
+  });
+});
