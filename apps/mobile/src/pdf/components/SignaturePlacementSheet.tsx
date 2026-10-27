@@ -59,6 +59,8 @@ export function SignaturePlacementSheet({
   const theme = useTheme();
 
   const [page, setPage] = useState(1);
+  /** Pages the person removed a signature from: do not quietly put it back. */
+  const cleared = useRef<Set<number>>(new Set());
   const [placements, setPlacements] = useState<Placement[]>(initial);
   const [pageImage, setPageImage] = useState<{ data: string; width: number; height: number } | null>(
     null,
@@ -67,12 +69,15 @@ export function SignaturePlacementSheet({
 
   // Opening starts from what the tool holds, and lands on the first page with
   // a signature on it (or page 1).
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+
   useEffect(() => {
     if (!visible) return;
 
-    setPlacements(initial);
-    setPage(initial[0]?.page ?? 1);
-  }, [visible, initial]);
+    setPlacements(initialRef.current);
+    setPage(initialRef.current[0]?.page ?? 1);
+  }, [visible]);
 
   // The page under the editor.
   useEffect(() => {
@@ -118,11 +123,31 @@ export function SignaturePlacementSheet({
     if (opened.current) return;
     opened.current = true;
 
-    if (initial.length === 0) {
+    cleared.current = new Set();
+
+    if (initialRef.current.length === 0) {
       setPlacements([{ page: 1, x: 0.5, y: DEFAULT_Y, w: DEFAULT_WIDTH, rotation: 0 }]);
       setPage(1);
     }
-  }, [visible, initial]);
+  }, [visible]);
+
+  /**
+   * Turning to a page puts the signature on it, the way picking up a page means
+   * you are about to sign it. Clearing it on a page is a decision, so that page
+   * is remembered as cleared and left alone.
+   */
+  const goToPage = (next: number) => {
+    setPage(next);
+
+    if (cleared.current.has(next)) return;
+    if (placements.some((placement) => placement.page === next)) return;
+
+    setPlacements((existing) =>
+      [...existing, { page: next, x: 0.5, y: DEFAULT_Y, w: DEFAULT_WIDTH, rotation: 0 }].sort(
+        (a, b) => a.page - b.page,
+      ),
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCancel}>
@@ -187,7 +212,7 @@ export function SignaturePlacementSheet({
                 return (
                   <Pressable
                     key={number}
-                    onPress={() => setPage(number)}
+                    onPress={() => goToPage(number)}
                     accessibilityRole="button"
                     accessibilityLabel={`Page ${number}${signed ? ', signed' : ''}`}
                     accessibilityState={{ selected: active }}
@@ -230,13 +255,18 @@ export function SignaturePlacementSheet({
               variant="secondary"
               size="md"
               icon={current ? 'trash-outline' : 'add'}
-              onPress={() =>
-                setCurrent(current ? null : { page, x: 0.5, y: DEFAULT_Y, w: DEFAULT_WIDTH, rotation: 0 })
-              }
+              onPress={() => {
+                if (current) cleared.current.add(page);
+                else cleared.current.delete(page);
+
+                setCurrent(
+                  current ? null : { page, x: 0.5, y: DEFAULT_Y, w: DEFAULT_WIDTH, rotation: 0 },
+                );
+              }}
               fullWidth={false}
               style={{ flex: 1 }}
             />
-            {placements.length > 1 ? (
+            {pageCount > 1 ? (
               <Button
                 label="On every page"
                 variant="secondary"
@@ -246,6 +276,7 @@ export function SignaturePlacementSheet({
                   const template = current ?? placements[0];
                   if (!template) return;
 
+                  cleared.current = new Set();
                   setPlacements(
                     Array.from({ length: pageCount }, (_, index) => ({
                       ...template,
