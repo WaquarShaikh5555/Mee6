@@ -128,6 +128,16 @@ jobs:
           done
           echo "manifest declares the service and the apps it may look at"
 
+          # Updating itself needs two declarations from the updater module: the
+          # permission that lets an app launch the installer, and the provider
+          # that gives the installer a readable handle on the APK. Missing
+          # either one fails at the worst moment — on the person's phone, with
+          # a download already in the cache.
+          grep -q "REQUEST_INSTALL_PACKAGES" /tmp/manifest.txt
+          grep -q "com.shaikhs.app.updater" /tmp/manifest.txt
+          grep -q "FileProvider" /tmp/manifest.txt
+          echo "manifest can install its own updates"
+
           # The PDF engine is a local Expo module; a silent autolinking failure
           # would ship an app whose Arena says "install the app". Look for the
           # module class in the DEX, the same way the app loads it.
@@ -139,6 +149,16 @@ jobs:
           else
             echo "PDF Arena engine is MISSING from the APK" >&2
             exit 1
+          fi
+
+          # The updater's classes may be renamed by shrinking, so this only
+          # reports. The manifest checks above are the real proof it linked: the
+          # permission and the provider come from the module's own manifest and
+          # cannot appear without it.
+          if unzip -p "$APK" "classes*.dex" | grep -qa "updater/UpdaterModule"; then
+            echo "updater is in the APK"
+          else
+            echo "updater classes renamed by shrinking (linked, per the manifest)"
           fi
 
           APKSIGNER="$(ls -d "$TOOLS"/*/apksigner | sort -V | tail -1)"
