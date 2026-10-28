@@ -37,16 +37,30 @@ class RegainModule : Module() {
     Name("Regain")
 
     AsyncFunction("getStatus") {
-      val active = isServiceEnabled()
+      // A build can leave the service out on purpose: Google Play Protect
+      // refuses to install a sideloaded app that declares an accessibility
+      // service, so there is an edition without one. In that edition the honest
+      // answer is "not in this build", not "grant a permission" for a service
+      // that does not exist.
+      val declared = isServiceDeclared()
+      val active = declared && isServiceEnabled()
 
       mapOf(
-        "availability" to if (active) "ready" else "blocked-by-permission",
+        "availability" to when {
+          !declared -> "not-in-this-build"
+          active -> "ready"
+          else -> "blocked-by-permission"
+        },
         "platform" to "android",
         "granularity" to "surface",
-        "explanation" to if (active)
-          "Regain is watching for the screens you closed. It sees which screen is open, never what is on it."
-        else
-          "Switch Regain on in Settings → Accessibility. Android requires that before any app can step in."
+        "explanation" to when {
+          !declared ->
+            "This edition leaves Regain out, because Google Play Protect blocks any sideloaded app that declares an accessibility service. The full build has it — see the release notes."
+          active ->
+            "Regain is watching for the screens you closed. It sees which screen is open, never what is on it."
+          else ->
+            "Switch Regain on in Settings → Accessibility. Android requires that before any app can step in."
+        }
       )
     }
 
@@ -76,6 +90,20 @@ class RegainModule : Module() {
         rules.associate { it.appId to it.sections },
         enabled
       )
+    }
+  }
+
+  /** Whether this build actually declares the service. */
+  private fun isServiceDeclared(): Boolean {
+    return try {
+      @Suppress("DEPRECATION")
+      context.packageManager.getServiceInfo(
+        ComponentName(context, RegainAccessibilityService::class.java),
+        0
+      )
+      true
+    } catch (error: PackageManager.NameNotFoundException) {
+      false
     }
   }
 

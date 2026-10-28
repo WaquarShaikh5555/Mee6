@@ -287,7 +287,9 @@ export default function RegainScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
               <Badge label="Preview" tone="brass" />
               <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
-                The rules are saved and tested. Blocking inside Instagram starts in the native build.
+                {enforcement?.availability === 'not-in-this-build'
+                  ? 'The rules and the block screen work here; the full build is the one that enforces them on Instagram.'
+                  : 'The rules are saved and tested. Blocking inside Instagram starts in the native build.'}
               </Text>
             </View>
             <Button

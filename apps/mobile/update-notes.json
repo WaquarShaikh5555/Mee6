@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.9.3": [
+    "A \"lite\" edition of the app now installs with no security prompt at all — it leaves Regain out.",
+    "The full app still has Regain; Play Protect blocks it until you switch scanning off once.",
+    "Updates: the prompt picks the package built for your phone and checks it arrived intact."
+  ],
   "0.9.2": [
     "The update prompt now picks the package built for your phone — about half the size.",
     "The app updates itself in one tap, and checks the file arrived intact first.",

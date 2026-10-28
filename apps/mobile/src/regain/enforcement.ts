@@ -18,6 +18,11 @@ export type EnforcementAvailability =
   | 'ready'
   /** Running in Expo Go, the web preview, or a build without the module. */
   | 'unavailable'
+  /**
+   * A full build with the module, but with the accessibility service left out
+   * on purpose — the edition that installs without Play Protect objecting.
+   */
+  | 'not-in-this-build'
   /** The module is there, but the person has not granted the system permission. */
   | 'blocked-by-permission';
 
@@ -95,6 +100,8 @@ const EXPLANATIONS: Record<EnforcementAvailability, string> = {
     'Preview build: the screens and rules are real, but blocking starts once the native build is installed on your phone.',
   'blocked-by-permission':
     'Regain needs permission in your phone settings before it can step in.',
+  'not-in-this-build':
+    'This edition leaves Regain out, because Google Play Protect blocks any sideloaded app that declares an accessibility service. The full build has it — see the release notes.',
 };
 
 export async function getEnforcementStatus(): Promise<EnforcementStatus> {

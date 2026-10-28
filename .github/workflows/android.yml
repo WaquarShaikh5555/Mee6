@@ -230,21 +230,87 @@ jobs:
 
           sha256sum "$APK"
 
+      # Google Play Protect's enhanced fraud protection refuses to install a
+      # sideloaded app that declares an accessibility service, and Regain is one.
+      # The block cannot be dismissed, so a second edition is built without the
+      # service: it installs with no security prompt at all, and Regain's screen
+      # says plainly that it left it out.
+      - name: Build the edition without Regain
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/apk/release
+          mkdir -p full
+          cp "$OUT"/*.apk full/
+
+          node - <<'LITE'
+          const fs = require('fs');
+
+          const path = 'android/app/src/main/AndroidManifest.xml';
+          const source = fs.readFileSync(path, 'utf8');
+
+          if (!source.includes('<application')) {
+            console.error('no <application> in the generated manifest');
+            process.exit(1);
+          }
+
+          // tools:node="remove" deletes the node the Regain module contributes,
+          // whichever manifest it came from.
+          const removal =
+            '<service android:name="expo.modules.regain.RegainAccessibilityService" ' +
+            'tools:node="remove" />';
+
+          let patched = source;
+
+          if (!/xmlns:tools=/.test(patched)) {
+            patched = patched.replace('<manifest', '<manifest xmlns:tools="http://schemas.android.com/tools"');
+          }
+
+          patched = patched.replace(/(<application[^>]*>)/, `$1\n        ${removal}`);
+
+          if (!patched.includes('tools:node="remove"')) {
+            console.error('could not inject the removal');
+            process.exit(1);
+          }
+
+          fs.writeFileSync(path, patched);
+          console.log('Regain accessibility service removed for this build');
+          LITE
+
+          cd android
+          ./gradlew :app:assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pexpo.useLegacyPackaging=true \
+            --no-daemon 2>&1 | tail -20
+          cd ..
+
+          TOOLS="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+          AAPT2="$(ls -d "$TOOLS"/*/aapt2 | sort -V | tail -1)"
+
+          # The whole point of this build: the declaration must be gone.
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$OUT/app-arm64-v8a-release.apk" > lite-manifest.txt
+          if grep -q "RegainAccessibilityService" lite-manifest.txt; then
+            echo "the lite build still declares the accessibility service" >&2
+            exit 1
+          fi
+          echo "lite build declares no accessibility service"
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           OUT=android/app/build/outputs/apk/release
-          cp "$OUT/app-universal-release.apk" shaikhs.apk
-          cp "$OUT/app-arm64-v8a-release.apk" shaikhs-arm64.apk
+          cp full/app-universal-release.apk shaikhs.apk
+          cp full/app-arm64-v8a-release.apk shaikhs-arm64.apk
+          cp "$OUT/app-arm64-v8a-release.apk" shaikhs-arm64-lite.apk
 
           # The 32-bit package is a convenience for old phones. Its absence must
           # not stop the build that everyone else can install.
-          ASSETS="shaikhs.apk shaikhs-arm64.apk version.json"
-          if [ -f "$OUT/app-armeabi-v7a-release.apk" ]; then
-            cp "$OUT/app-armeabi-v7a-release.apk" shaikhs-32bit.apk
-            ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-32bit.apk version.json"
+          ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-arm64-lite.apk version.json"
+          if [ -f "full/app-armeabi-v7a-release.apk" ]; then
+            cp full/app-armeabi-v7a-release.apk shaikhs-32bit.apk
+            cp "$OUT/app-armeabi-v7a-release.apk" shaikhs-32bit-lite.apk
+            ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-arm64-lite.apk shaikhs-32bit.apk shaikhs-32bit-lite.apk version.json"
           fi
           ls -l shaikhs*.apk
 
@@ -324,21 +390,36 @@ jobs:
 
           {
             echo ""
+            echo "### Play Protect and Regain"
+            echo ""
+            echo "Google Play Protect now refuses to install **any** sideloaded app that declares an"
+            echo "accessibility service — that is how Regain works, so the full build is caught by"
+            echo "it. This is a policy about declared permissions, not a virus report. Two ways in:"
+            echo ""
+            echo "1. **The full app (Regain included):** Play Store → profile → Play Protect →"
+            echo "   gear icon → turn off *Scan apps with Play Protect* → install → turn it back on."
+            echo "2. **The \"lite\" files (no Regain):** they declare no accessibility service, so they"
+            echo "   install with no security prompt at all. Regain's screen says plainly that this"
+            echo "   edition leaves it out."
+            echo ""
             echo "### Which file"
             echo ""
             echo "Nearly every phone made since 2019 is 64-bit — start with the small one:"
             echo ""
             echo "| File | For | Size |"
             echo "| --- | --- | --- |"
-            echo "| **shaikhs-arm64.apk** | 64-bit phones (the usual case) | $(du -h shaikhs-arm64.apk | cut -f1) |"
-            echo "| shaikhs-32bit.apk | older 32-bit phones | $(du -h shaikhs-32bit.apk | cut -f1) |"
-            echo "| shaikhs.apk | any phone, and what the app updates itself from | $(du -h shaikhs.apk | cut -f1) |"
+            echo "| **shaikhs-arm64.apk** | 64-bit phones, full app with Regain | $(du -h shaikhs-arm64.apk | cut -f1) |"
+            echo "| shaikhs-32bit.apk | older 32-bit phones, full app | $(du -h shaikhs-32bit.apk | cut -f1) |"
+            echo "| **shaikhs-arm64-lite.apk** | 64-bit phones, installs with no security prompt (no Regain) | $(du -h shaikhs-arm64-lite.apk | cut -f1) |"
+            echo "| shaikhs-32bit-lite.apk | 32-bit phones, same trade-off | $(du -h shaikhs-32bit-lite.apk | cut -f1) |"
+            echo "| shaikhs.apk | any phone, full app, and what the app updates itself from | $(du -h shaikhs.apk | cut -f1) |"
             echo ""
             echo "If a download is cut short, Android says *appears to be invalid*. Compare the"
             echo "file against these exact figures instead of guessing:"
             echo ""
             echo '```'
-            for f in shaikhs-arm64.apk shaikhs-32bit.apk shaikhs.apk; do
+            for f in shaikhs-arm64.apk shaikhs-32bit.apk shaikhs-arm64-lite.apk shaikhs-32bit-lite.apk shaikhs.apk; do
+              [ -f "$f" ] || continue
               echo "$(stat -c%s "$f") bytes  sha256 $(sha256sum "$f" | cut -d' ' -f1)  $f"
             done
             echo '```'
@@ -385,5 +466,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shaikhs-apk
-          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/*.apk
+            apps/mobile/full/*.apk
           if-no-files-found: warn
