@@ -68,6 +68,25 @@ jobs:
       - name: Type-check and test
         run: npm run verify
 
+      # Android refuses an update whose version code is not newer than the
+      # installed one, so it is derived from the version rather than left at the
+      # default 1: 0.9.0 builds as 900, 0.10.1 as 1001.
+      - name: Stamp the version code
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'app.json';
+          const app = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+          const [major, minor, patch] = app.expo.version.split('.').map((n) => parseInt(n, 10) || 0);
+          const versionCode = major * 10000 + minor * 100 + patch;
+
+          app.expo.android = { ...app.expo.android, versionCode };
+          fs.writeFileSync(path, JSON.stringify(app, null, 2) + '\n');
+
+          console.log('version', app.expo.version, '-> versionCode', versionCode);
+          "
+
       - name: Generate the Android project
         run: |
           set -o pipefail
@@ -133,6 +152,34 @@ jobs:
           set -euo pipefail
           cp android/app/build/outputs/apk/release/app-release.apk shaikhs.apk
 
+          # The feed the app reads at launch. A plain file next to the APK: no
+          # API quota, no token, and one request that either answers or does not.
+          node - <<'FEED'
+          const fs = require('fs');
+
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          const version = app.expo.version;
+
+          let notes = [];
+          try {
+            const all = JSON.parse(fs.readFileSync('update-notes.json', 'utf8'));
+            notes = Array.isArray(all[version]) ? all[version].slice(0, 4) : [];
+          } catch (error) {
+            // No notes for this version is fine: the prompt says so plainly.
+          }
+
+          const feed = {
+            version,
+            url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/apk/shaikhs.apk`,
+            size: fs.statSync('shaikhs.apk').size,
+            notes,
+            builtAt: new Date().toISOString(),
+          };
+
+          fs.writeFileSync('version.json', JSON.stringify(feed, null, 2));
+          console.log('published version', version);
+          FEED
+
           cat > release-notes.md <<'NOTES'
           **Shaikh's for Android** — download `shaikhs.apk` below and open it on your phone.
 
@@ -146,13 +193,18 @@ jobs:
           PDF Arena is here too: the card under Regain. Twenty-one tools —
           merge, split, rotate, sign, watermark, compress, protect, convert and
           the rest — running entirely on your phone. Nothing is uploaded.
+
+          From this version on, the app updates itself: it says when a new build
+          is out, and the Update button downloads and installs it in one tap.
+          Android asks once to allow installs from this source — allow it, and
+          every later update is a single tap.
           NOTES
 
           if gh release view apk >/dev/null 2>&1; then
-            gh release upload apk shaikhs.apk --clobber
+            gh release upload apk shaikhs.apk version.json --clobber
             gh release edit apk --title "Shaikh's — Android app" --notes-file release-notes.md
           else
-            gh release create apk shaikhs.apk \
+            gh release create apk shaikhs.apk version.json \
               --title "Shaikh's — Android app" \
               --notes-file release-notes.md
           fi

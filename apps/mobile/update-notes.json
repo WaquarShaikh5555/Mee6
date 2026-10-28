@@ -1,0 +1,8 @@
+{
+  "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.9.0": [
+    "Updates now install from inside the app — no browser, no hunting for a file.",
+    "A prompt at launch shows what changed, with five seconds before Update unlocks.",
+    "PDF Arena: sign with your finger or a photo, then drag and pinch it into place."
+  ]
+}

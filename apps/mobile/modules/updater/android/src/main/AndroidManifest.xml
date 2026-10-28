@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    Installing an app from inside an app needs this declaration, and then one
+    time only the person allows "install unknown apps" for Shaikh's. There is no
+    silent path for a sideloaded app, and pretending otherwise would be a lie in
+    the interface.
+  -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+  <application>
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.updater"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/updater_paths" />
+    </provider>
+  </application>
+
+</manifest>

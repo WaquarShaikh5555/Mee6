@@ -30,6 +30,11 @@ to regenerate them from the source artwork are in [docs/BRAND.md](docs/BRAND.md)
 [docs/legal](docs/legal). Accounts, sessions, and the owner flag are audited in
 [docs/SECURITY.md](docs/SECURITY.md).
 
+**Updating:** the app checks for a new build the moment it opens, says what changed, and installs it
+in one tap — no browser and no hunting for a file. The first update ever asks once for Android's
+"allow installs from this source", because the platform requires it; after that it is a single tap
+on Update. How the feed, the download and the installer work is in [docs/UPDATES.md](docs/UPDATES.md).
+
 **Install it on an Android phone:** [download `shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk),
 open it, allow installing from this source, then open Regain and allow it in
 Settings → Accessibility. Built by GitHub Actions on every push

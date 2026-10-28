@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { RegainProvider } from '@/regain/RegainProvider';
 import { ThemeProvider, useTheme, useThemeController } from '@/theme/ThemeProvider';
+import { UpdateGate } from '@/update/UpdateGate';
 import { Text } from '@/ui/Text';
 import { Wordmark } from '@/ui/Wordmark';
 
@@ -59,6 +60,10 @@ function RootNavigator() {
             because agreeing to them is part of creating an account. */}
         <Stack.Screen name="legal/[doc]" />
       </Stack>
+
+      {/* Above the navigator, so it can appear the moment the app is usable
+          and stay put while someone reads it. */}
+      <UpdateGate />
     </>
   );
 }
