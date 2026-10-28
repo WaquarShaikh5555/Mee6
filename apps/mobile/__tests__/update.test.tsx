@@ -12,7 +12,13 @@ import type { ReactNode } from 'react';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 import { UpdateSheet } from '@/update/UpdateSheet';
 import type { UpdatePhase } from '@/update/useUpdate';
+import { downloadUpdate } from '@/update/updater';
 import { compareVersions, isNewer, parseFeed, sizeFor, type UpdateInfo } from '@/update/version';
+
+jest.mock('expo-modules-core', () => {
+  const actual = jest.requireActual('expo-modules-core');
+  return { ...actual, requireOptionalNativeModule: jest.fn(() => null) };
+});
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),
@@ -25,10 +31,13 @@ function wrap(node: ReactNode) {
   return render(<ThemeProvider>{node}</ThemeProvider>);
 }
 
+const HASH = '96181aca4790addea7dd8dd4bb494e56d8b8b2979b58a84f29e37f0a21ab6951';
+
 const info: UpdateInfo = {
   version: '0.9.0',
   url: 'https://github.com/example/releases/download/apk/shaikhs.apk',
   size: 63_076_672,
+  sha256: HASH,
   notes: ['Updates install from inside the app.', 'Signing got a real editor.'],
 };
 
@@ -54,6 +63,7 @@ describe('versions', () => {
       version: '0.9.0',
       url: 'https://x/y.apk',
       size: 10,
+      sha256: '',
       notes: ['a'],
     });
 
@@ -67,13 +77,86 @@ describe('versions', () => {
   it('survives a feed with the wrong types in it', () => {
     const parsed = parseFeed({ version: ' 1.2.3 ', url: ' https://x/y.apk ', size: -4, notes: [1, 'ok'] });
 
-    expect(parsed).toEqual({ version: '1.2.3', url: 'https://x/y.apk', size: 0, notes: ['ok'] });
+    expect(parsed).toEqual({
+      version: '1.2.3',
+      url: 'https://x/y.apk',
+      size: 0,
+      sha256: '',
+      notes: ['ok'],
+    });
+  });
+
+  it('carries the file fingerprint, and only when it is one', () => {
+    const feed = { version: '0.9.1', url: 'https://x/y.apk', size: 10, sha256: ` ${HASH.toUpperCase()} ` };
+
+    expect(parseFeed(feed)?.sha256).toBe(HASH);
+    // A truncated or mistyped hash is worse than none: it would reject a good
+    // download. Anything that is not 64 hex characters is dropped.
+    expect(parseFeed({ ...feed, sha256: 'abc' })?.sha256).toBe('');
+    expect(parseFeed({ ...feed, sha256: 42 })?.sha256).toBe('');
+    expect(parseFeed({ ...feed, sha256: undefined })?.sha256).toBe('');
   });
 
   it('says how big a download is', () => {
     expect(sizeFor(63_076_672)).toBe('60.2 MB');
     expect(sizeFor(900)).toBe('1 KB');
     expect(sizeFor(0)).toBe('');
+  });
+});
+
+describe('the download is checked, not assumed', () => {
+  const bridge = {
+    download: jest.fn(),
+    install: jest.fn(),
+    canInstall: jest.fn(),
+    openInstallSettings: jest.fn(),
+    discard: jest.fn(),
+    addListener: jest.fn(),
+  };
+
+  const subscription = { remove: jest.fn() };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    bridge.addListener.mockReturnValue(subscription);
+    bridge.download.mockResolvedValue({ uri: 'file:///cache/updater/shaikhs-0.9.1.apk', bytes: 10, sha256: HASH });
+
+    const core = jest.requireMock('expo-modules-core') as { requireOptionalNativeModule: jest.Mock };
+    core.requireOptionalNativeModule.mockReturnValue(bridge);
+  });
+
+  it('hands the expected fingerprint to the downloader', async () => {
+    await downloadUpdate(info.url, 'shaikhs-0.9.1.apk', HASH, () => {});
+
+    expect(bridge.download).toHaveBeenCalledWith(info.url, 'shaikhs-0.9.1.apk', HASH);
+  });
+
+  it('reports a download that did not arrive intact, and stops listening', async () => {
+    bridge.download.mockRejectedValueOnce(new Error('The download did not arrive intact.'));
+
+    await expect(downloadUpdate(info.url, 'shaikhs.apk', HASH, () => {})).rejects.toThrow(
+      /did not arrive intact/,
+    );
+    expect(subscription.remove).toHaveBeenCalled();
+  });
+
+  it('turns bytes into a fraction so the percentage means something', async () => {
+    bridge.download.mockImplementationOnce(async (_url: string, _name: string, _hash: string) => {
+      const listener = bridge.addListener.mock.calls[0]![1] as (payload: {
+        received: number;
+        total: number;
+      }) => void;
+      listener({ received: 30, total: 120 });
+      listener({ received: 60, total: 0 });
+      return { uri: 'file:///x.apk', bytes: 60, sha256: HASH };
+    });
+
+    const seen: number[] = [];
+    await downloadUpdate(info.url, 'x.apk', HASH, (fraction) => seen.push(fraction));
+
+    // No total means no honest percentage, so it stays at zero rather than
+    // inventing a progress bar that lies.
+    expect(seen).toEqual([0.25, 0]);
   });
 });
 

@@ -35,9 +35,12 @@ in one tap — no browser and no hunting for a file. The first update ever asks 
 "allow installs from this source", because the platform requires it; after that it is a single tap
 on Update. How the feed, the download and the installer work is in [docs/UPDATES.md](docs/UPDATES.md).
 
-**Install it on an Android phone:** [download `shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk),
-open it, allow installing from this source, then open Regain and allow it in
-Settings → Accessibility. Built by GitHub Actions on every push
+**Install it on an Android phone:** [download `shaikhs-arm64.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-arm64.apk)
+— the small 64-bit package, which is what almost every phone made since 2019 needs.
+Older 32-bit phones take [`shaikhs-32bit.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-32bit.apk),
+and [`shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk)
+runs on anything. Open it, allow installing from this source, then open Regain and
+allow it in Settings → Accessibility. Built by GitHub Actions on every push
 ([how it works](docs/REGAIN.md)).
 
 ```bash

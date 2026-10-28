@@ -87,9 +87,14 @@ export function useUpdate() {
 
       setPhase({ status: 'downloading', info, progress: 0, received: 0, total: info.size });
 
-      const file = await downloadUpdate(info.url, `shaikhs-${info.version}.apk`, (fraction, received, total) => {
-        setPhase({ status: 'downloading', info, progress: fraction, received, total });
-      });
+      const file = await downloadUpdate(
+        info.url,
+        `shaikhs-${info.version}.apk`,
+        info.sha256,
+        (fraction, received, total) => {
+          setPhase({ status: 'downloading', info, progress: fraction, received, total });
+        },
+      );
 
       download.current = file.uri;
       await handOver(info);

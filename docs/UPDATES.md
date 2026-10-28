@@ -27,6 +27,46 @@ stamps it from the version: `major * 10000 + minor * 100 + patch` — `0.9.0` is
 `1001`. Bumping the version in `app.json` is therefore the only step needed to ship an update, and
 forgetting it fails loudly (Android says "app not installed") rather than silently.
 
+## Three packages, one version
+
+The build writes one APK per CPU type and a universal one, because a 60 MB
+download over a mobile connection is where installs actually fail:
+
+| File | For |
+| --- | --- |
+| `shaikhs-arm64.apk` | 64-bit phones — the usual case, about half the size |
+| `shaikhs-32bit.apk` | older 32-bit phones |
+| `shaikhs.apk` | anything; also the file the in-app updater downloads |
+
+The release notes carry the exact byte count and SHA-256 of each one, and the
+feed carries the checksum of `shaikhs.apk`, so a download that was cut short is
+caught before Android has to refuse it.
+
+## When Android says the package appears to be invalid
+
+That message means the phone was handed something it could not read as a
+package, and in practice it is a download that never finished — a 60 MB file
+over a phone connection, often through an in-app browser that saves an error
+page under the `.apk` name.
+
+In order, the things that actually fix it:
+
+1. **Download in a real browser.** Open the release page in Chrome, tap the
+   file, and wait for the download notification. Links tapped inside another
+   app often do not survive the redirect to the file host.
+2. **Take the small file.** `shaikhs-arm64.apk` is roughly 30 MB, so it has half
+   as many chances to be cut short. If the phone is 32-bit, the installer says
+   the app is not compatible — use `shaikhs-32bit.apk`.
+3. **Compare the size.** The release notes print the exact byte count. A file
+   that is a few MB short of it was truncated, however finished it looks.
+4. Signing is never the cause of *invalid*: the key is the same on every build
+   (the workflow prints its fingerprint on each run), and a key mismatch would
+   read as a conflict with an existing package instead.
+
+The build now refuses to publish a package that does not unzip cleanly, whose
+`versionCode` is missing or stale, or whose signature will not verify — so the
+file offered on the release page is always one that passed those checks.
+
 ## The one permission
 
 A sideloaded app may not launch the installer until **Android Settings → Apps → Shaikh's → Install

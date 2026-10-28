@@ -12,6 +12,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /**
  * Getting a new version onto the phone without a browser.
@@ -51,8 +52,14 @@ class UpdaterModule : Module() {
      *
      * A partial file is deleted on failure, so a retry never installs half an
      * APK — which the installer rejects anyway, but with a much worse message.
+     *
+     * `expected` is the SHA-256 published beside the file. It is verified while
+     * the bytes stream past, because the failure it prevents is exactly the one
+     * Android reports badly: a truncated 60 MB download looks like a normal file
+     * until the installer calls it "invalid". An empty value means the feed had
+     * no checksum; the download still works, it is simply not proof-checked.
      */
-    AsyncFunction("download") { url: String, name: String ->
+    AsyncFunction("download") { url: String, name: String, expected: String? ->
       val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "-").ifBlank { "update.apk" }
       val target = File(downloadDir(), safe)
 
@@ -60,6 +67,7 @@ class UpdaterModule : Module() {
       downloadDir().listFiles()?.forEach { it.delete() }
 
       var connection: HttpURLConnection? = null
+      val digest = MessageDigest.getInstance("SHA-256")
 
       try {
         connection = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -88,6 +96,7 @@ class UpdaterModule : Module() {
               if (read < 0) break
 
               output.write(buffer, 0, read)
+              digest.update(buffer, 0, read)
               received += read
 
               // Four reports a second is enough to look live and cheap enough
@@ -107,9 +116,20 @@ class UpdaterModule : Module() {
           throw IllegalStateException("The download stopped early. Try again on a better connection.")
         }
 
+        val actual = digest.digest().joinToString("") { byte ->
+          "%02x".format(byte.toInt() and 0xff)
+        }
+        val wanted = expected?.trim()?.lowercase().orEmpty()
+
+        if (wanted.isNotEmpty() && actual != wanted) {
+          throw IllegalStateException(
+            "The download did not arrive intact. Nothing was installed — try again."
+          )
+        }
+
         sendEvent("onProgress", mapOf("received" to received, "total" to received))
 
-        mapOf("uri" to Uri.fromFile(target).toString(), "bytes" to received)
+        mapOf("uri" to Uri.fromFile(target).toString(), "bytes" to received, "sha256" to actual)
       } catch (error: Throwable) {
         target.delete()
         throw IllegalStateException(error.message ?: "The update could not be downloaded.")

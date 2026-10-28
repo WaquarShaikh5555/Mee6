@@ -22,6 +22,14 @@ export type UpdateInfo = {
   url: string;
   /** Bytes, so the prompt can say how big the download is. */
   size: number;
+  /**
+   * The SHA-256 of the APK, checked after it lands.
+   *
+   * A partial download is the one way an update can arrive looking fine and
+   * still be refused by Android as "invalid". Empty means the feed did not
+   * publish one (older feeds), and the download goes unverified.
+   */
+  sha256: string;
   /** Two or three short lines: what changed. */
   notes: string[];
 };
@@ -85,6 +93,9 @@ export function parseFeed(raw: unknown): UpdateInfo | null {
 
   const size = typeof record.size === 'number' && record.size > 0 ? record.size : 0;
 
+  const digest = typeof record.sha256 === 'string' ? record.sha256.trim().toLowerCase() : '';
+  const sha256 = /^[0-9a-f]{64}$/.test(digest) ? digest : '';
+
   const notes = Array.isArray(record.notes)
     ? record.notes
         .filter((note): note is string => typeof note === 'string')
@@ -93,7 +104,7 @@ export function parseFeed(raw: unknown): UpdateInfo | null {
         .slice(0, 4)
     : [];
 
-  return { version, url, size, notes };
+  return { version, url, size, sha256, notes };
 }
 
 /** Bytes to a short, human phrase. Kept beside the feed because only it uses it. */

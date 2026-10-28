@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.9.1": [
+    "Installs are now checked against the file's fingerprint, so a broken download says so instead of failing at Android.",
+    "The app shows what is new, then updates itself in one tap.",
+    "PDF Arena: sign, place, and every result lands in your Downloads folder."
+  ],
   "0.9.0": [
     "Updates now install from inside the app — no browser, no hunting for a file.",
     "A prompt at launch shows what changed, with five seconds before Update unlocks.",

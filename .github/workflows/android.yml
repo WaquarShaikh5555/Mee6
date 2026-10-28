@@ -92,6 +92,32 @@ jobs:
           set -o pipefail
           npx expo prebuild --platform android --no-install --clean 2>&1 | tee build.log
 
+      # One APK per CPU type, plus a universal one. A phone downloading 30 MB
+      # instead of 60 MB is the difference between an install that survives a
+      # mobile connection and one that arrives truncated — and a truncated
+      # package is exactly what Android calls "package appears to be invalid".
+      #
+      # Appended rather than spliced in: Gradle allows more than one `android`
+      # block, and appending cannot corrupt the generated file.
+      - name: Split the APK by CPU type
+        run: |
+          {
+            echo ""
+            echo "android {"
+            echo "    splits {"
+            echo "        abi {"
+            echo "            enable true"
+            echo "            reset()"
+            echo "            include 'arm64-v8a', 'armeabi-v7a'"
+            echo "            universalApk true"
+            echo "        }"
+            echo "    }"
+            echo "}"
+          } >> android/app/build.gradle
+
+          grep -q "universalApk true" android/app/build.gradle
+          echo "release build now writes one APK per CPU type plus a universal one"
+
       - name: Build the APK
         run: |
           set -o pipefail
@@ -105,9 +131,18 @@ jobs:
       - name: Check the build
         run: |
           set -euo pipefail
-          APK=android/app/build/outputs/apk/release/app-release.apk
+          OUT=android/app/build/outputs/apk/release
+          APK=$OUT/app-universal-release.apk
           test -f "$APK"
-          ls -lh "$APK"
+          ls -lh "$OUT"
+
+          # Every package must read back as a whole archive, not a half-written
+          # file. This is the exact failure a person sees as "package appears to
+          # be invalid", so it is caught here rather than on their phone.
+          for apk in "$OUT"/*.apk; do
+            unzip -tqq "$apk" > /dev/null
+            echo "archive ok: $(basename "$apk")"
+          done
           unzip -l "$APK" | grep -q "assets/index.android.bundle"
           # If the Supabase URL is missing the app would silently run in demo
           # mode; refuse to publish a build like that.
@@ -161,8 +196,34 @@ jobs:
             echo "updater classes renamed by shrinking (linked, per the manifest)"
           fi
 
+          # versionCode lives in the APK, not in app.json: if the stamp did not
+          # reach the package, an update can never install over the old build.
+          BADGING="$("$AAPT2" dump badging "$APK" 2>/dev/null || true)"
+          if [ -z "$BADGING" ]; then
+            AAPT_V1="$(ls -d "$TOOLS"/*/aapt | sort -V | tail -1)"
+            BADGING="$("$AAPT_V1" dump badging "$APK")"
+          fi
+          echo "$BADGING" | grep -q "package: name='com.shaikhs.app'"
+          CODE="$(echo "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)"
+          EXPECTED="$(node -p "JSON.parse(require('fs').readFileSync('app.json', 'utf8')).expo.android.versionCode")"
+          if [ "$CODE" != "$EXPECTED" ]; then
+            echo "versionCode in the APK is '$CODE', app.json says '$EXPECTED'" >&2
+            exit 1
+          fi
+          echo "APK versionCode is $CODE"
+
           APKSIGNER="$(ls -d "$TOOLS"/*/apksigner | sort -V | tail -1)"
-          "$APKSIGNER" verify --print-certs "$APK" | head -3
+          # The signing key must be the same on every build, or an update can
+          # never install over the version already on the phone. Printing it
+          # makes a silent change impossible to miss.
+          "$APKSIGNER" verify --print-certs "$APK" | tee certs.txt
+          grep -qi "certificate SHA-256 digest" certs.txt
+
+          for apk in "$OUT"/*.apk; do
+            "$APKSIGNER" verify "$apk" > /dev/null
+            echo "signature ok: $(basename "$apk")"
+          done
+
           sha256sum "$APK"
 
       - name: Publish the release
@@ -170,7 +231,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          cp android/app/build/outputs/apk/release/app-release.apk shaikhs.apk
+          OUT=android/app/build/outputs/apk/release
+          cp "$OUT/app-universal-release.apk" shaikhs.apk
+          cp "$OUT/app-arm64-v8a-release.apk" shaikhs-arm64.apk
+
+          # The 32-bit package is a convenience for old phones. Its absence must
+          # not stop the build that everyone else can install.
+          ASSETS="shaikhs.apk shaikhs-arm64.apk version.json"
+          if [ -f "$OUT/app-armeabi-v7a-release.apk" ]; then
+            cp "$OUT/app-armeabi-v7a-release.apk" shaikhs-32bit.apk
+            ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-32bit.apk version.json"
+          fi
+          ls -l shaikhs*.apk
 
           # The feed the app reads at launch. A plain file next to the APK: no
           # API quota, no token, and one request that either answers or does not.
@@ -196,8 +268,15 @@ jobs:
             builtAt: new Date().toISOString(),
           };
 
+          // The checksum is computed from the exact bytes published, so a
+          // download that arrives truncated is rejected on the phone instead of
+          // being handed to Android as a broken package.
+          const crypto = require('crypto');
+          const bytes = fs.readFileSync('shaikhs.apk');
+          feed.sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+
           fs.writeFileSync('version.json', JSON.stringify(feed, null, 2));
-          console.log('published version', version);
+          console.log('published version', version, feed.size, 'bytes', feed.sha256);
           FEED
 
           cat > release-notes.md <<'NOTES'
@@ -220,11 +299,33 @@ jobs:
           every later update is a single tap.
           NOTES
 
+          {
+            echo ""
+            echo "### Which file"
+            echo ""
+            echo "Nearly every phone made since 2019 is 64-bit — start with the small one:"
+            echo ""
+            echo "| File | For | Size |"
+            echo "| --- | --- | --- |"
+            echo "| **shaikhs-arm64.apk** | 64-bit phones (the usual case) | $(du -h shaikhs-arm64.apk | cut -f1) |"
+            echo "| shaikhs-32bit.apk | older 32-bit phones | $(du -h shaikhs-32bit.apk | cut -f1) |"
+            echo "| shaikhs.apk | any phone, and what the app updates itself from | $(du -h shaikhs.apk | cut -f1) |"
+            echo ""
+            echo "If a download is cut short, Android says *appears to be invalid*. Compare the"
+            echo "file against these exact figures instead of guessing:"
+            echo ""
+            echo '```'
+            for f in shaikhs-arm64.apk shaikhs-32bit.apk shaikhs.apk; do
+              echo "$(stat -c%s "$f") bytes  sha256 $(sha256sum "$f" | cut -d' ' -f1)  $f"
+            done
+            echo '```'
+          } >> release-notes.md
+
           if gh release view apk >/dev/null 2>&1; then
-            gh release upload apk shaikhs.apk version.json --clobber
+            gh release upload apk $ASSETS --clobber
             gh release edit apk --title "Shaikh's — Android app" --notes-file release-notes.md
           else
-            gh release create apk shaikhs.apk version.json \
+            gh release create apk $ASSETS \
               --title "Shaikh's — Android app" \
               --notes-file release-notes.md
           fi
@@ -261,5 +362,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shaikhs-apk
-          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn

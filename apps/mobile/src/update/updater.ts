@@ -5,11 +5,12 @@
  * update prompt simply does not exist there rather than failing at runtime.
  */
 
-type Downloaded = { uri: string; bytes: number };
+type Downloaded = { uri: string; bytes: number; sha256: string };
 type Progress = { received: number; total: number };
 
 type UpdaterNativeModule = {
-  download(url: string, name: string): Promise<Downloaded>;
+  /** `expected` is the feed's SHA-256; empty means "do not check". */
+  download(url: string, name: string, expected: string): Promise<Downloaded>;
   /** False when "install unknown apps" has not been allowed for this app yet. */
   install(uri: string): Promise<boolean>;
   canInstall(): Promise<boolean>;
@@ -42,6 +43,7 @@ export function isUpdaterAvailable(): boolean {
 export async function downloadUpdate(
   url: string,
   name: string,
+  sha256: string,
   onProgress: (fraction: number, received: number, total: number) => void,
 ): Promise<Downloaded> {
   const updater = nativeModule();
@@ -52,7 +54,7 @@ export async function downloadUpdate(
   });
 
   try {
-    return await updater.download(url, name);
+    return await updater.download(url, name, sha256);
   } finally {
     subscription.remove();
   }
