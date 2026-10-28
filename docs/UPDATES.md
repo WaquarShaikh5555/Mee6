@@ -38,9 +38,17 @@ download over a mobile connection is where installs actually fail:
 | `shaikhs-32bit.apk` | older 32-bit phones |
 | `shaikhs.apk` | anything; also the file the in-app updater downloads |
 
+Native libraries are stored compressed, so the download is about 40% smaller
+than the installed size; Android unpacks them on install. The universal package
+is therefore near 63 MB and the 64-bit one near 35 MB.
+
 The release notes carry the exact byte count and SHA-256 of each one, and the
-feed carries the checksum of `shaikhs.apk`, so a download that was cut short is
-caught before Android has to refuse it.
+feed carries the same for `shaikhs.apk` plus an entry per CPU type, so:
+
+- A download that was cut short is caught before Android has to refuse it.
+- An in-app update downloads the package built for that phone's CPU — around
+  half the bytes of the universal one — and falls back to the universal package
+  if the feed has no entry for it.
 
 ## When Android says the package appears to be invalid
 

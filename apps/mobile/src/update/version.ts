@@ -15,6 +15,13 @@ export const UPDATE_FEED =
 /** How long the Update button stays disabled, so the message is actually read. */
 export const READ_SECONDS = 5;
 
+/** One downloadable build: where, how big, and what it should hash to. */
+export type UpdatePackage = {
+  url: string;
+  size: number;
+  sha256: string;
+};
+
 export type UpdateInfo = {
   /** The version the build published, e.g. "0.9.0". */
   version: string;
@@ -30,9 +37,48 @@ export type UpdateInfo = {
    * publish one (older feeds), and the download goes unverified.
    */
   sha256: string;
+  /**
+   * The same release built for one CPU type, keyed by Android's ABI name.
+   *
+   * A 64-bit package is close to half the size of the universal one, and the
+   * download is the fragile part of any update on a phone. Empty when the feed
+   * publishes only the universal package.
+   */
+  packages: Record<string, UpdatePackage>;
   /** Two or three short lines: what changed. */
   notes: string[];
 };
+
+/** Reads one package entry, or null if it is not a usable https link. */
+function parsePackage(raw: unknown): UpdatePackage | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const record = raw as Record<string, unknown>;
+  const url = typeof record.url === 'string' ? record.url.trim() : '';
+  if (!/^https:\/\//i.test(url)) return null;
+
+  const size = typeof record.size === 'number' && record.size > 0 ? record.size : 0;
+  const digest = typeof record.sha256 === 'string' ? record.sha256.trim().toLowerCase() : '';
+
+  return { url, size, sha256: /^[0-9a-f]{64}$/.test(digest) ? digest : '' };
+}
+
+/**
+ * The smallest package built for this phone.
+ *
+ * `abi` is what Android reports (`arm64-v8a`, `armeabi-v7a`, `x86_64`…). An
+ * unknown or missing ABI, and any build the feed has no entry for, falls back
+ * to the universal package — the one that runs everywhere.
+ */
+export function packageFor(info: UpdateInfo, abi: string | null): UpdatePackage {
+  const universal: UpdatePackage = { url: info.url, size: info.size, sha256: info.sha256 };
+  if (!abi) return universal;
+
+  const name = abi.trim().toLowerCase();
+  const key = name.startsWith('arm64') ? 'arm64-v8a' : name.startsWith('arm') ? 'armeabi-v7a' : '';
+
+  return (key && info.packages[key]) || universal;
+}
 
 /** What is installed right now. */
 export function installedVersion(): string {
@@ -96,6 +142,14 @@ export function parseFeed(raw: unknown): UpdateInfo | null {
   const digest = typeof record.sha256 === 'string' ? record.sha256.trim().toLowerCase() : '';
   const sha256 = /^[0-9a-f]{64}$/.test(digest) ? digest : '';
 
+  const packages: Record<string, UpdatePackage> = {};
+  if (record.packages && typeof record.packages === 'object') {
+    for (const [key, value] of Object.entries(record.packages as Record<string, unknown>)) {
+      const parsed = parsePackage(value);
+      if (parsed) packages[key] = parsed;
+    }
+  }
+
   const notes = Array.isArray(record.notes)
     ? record.notes
         .filter((note): note is string => typeof note === 'string')
@@ -104,7 +158,7 @@ export function parseFeed(raw: unknown): UpdateInfo | null {
         .slice(0, 4)
     : [];
 
-  return { version, url, size, sha256, notes };
+  return { version, url, size, sha256, packages, notes };
 }
 
 /** Bytes to a short, human phrase. Kept beside the feed because only it uses it. */

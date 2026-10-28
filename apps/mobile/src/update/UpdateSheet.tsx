@@ -67,6 +67,10 @@ export function UpdateSheet({
   const ready = !waiting && !working;
 
   const downloading = phase.status === 'downloading' ? phase : null;
+
+  // The size of the file this phone will actually download, not the universal
+  // one: half the number is half the decision.
+  const offeredSize = phase.status === 'available' ? phase.pkg.size : info.size;
   const percent = downloading ? Math.round(downloading.progress * 100) : 0;
 
   return (
@@ -119,7 +123,9 @@ export function UpdateSheet({
 
             <Text variant="footnote" tone="secondary">
               You have {installed}.{' '}
-              {info.size > 0 ? `The update is ${sizeFor(info.size)}, downloaded inside the app.` : ''}
+              {offeredSize > 0
+                ? `The update is ${sizeFor(offeredSize)}, downloaded inside the app.`
+                : ''}
             </Text>
           </View>
 

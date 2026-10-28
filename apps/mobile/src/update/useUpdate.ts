@@ -2,13 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   canInstall,
+  cpuAbi,
   discardDownload,
   downloadUpdate,
   installUpdate,
   isUpdaterAvailable,
   openInstallSettings,
 } from './updater';
-import { UPDATE_FEED, installedVersion, isNewer, parseFeed, type UpdateInfo } from './version';
+import {
+  UPDATE_FEED,
+  installedVersion,
+  isNewer,
+  packageFor,
+  parseFeed,
+  type UpdateInfo,
+  type UpdatePackage,
+} from './version';
 
 /**
  * Checking, downloading, installing.
@@ -22,7 +31,7 @@ export type UpdatePhase =
   | { status: 'idle' }
   /** Asked, waiting for the feed. Never shown. */
   | { status: 'checking' }
-  | { status: 'available'; info: UpdateInfo; installed: string }
+  | { status: 'available'; info: UpdateInfo; installed: string; pkg: UpdatePackage }
   | { status: 'downloading'; info: UpdateInfo; progress: number; received: number; total: number }
   /** Android wants its one-time permission before it will install anything. */
   | { status: 'permission'; info: UpdateInfo; download: string }
@@ -59,7 +68,9 @@ export function useUpdate() {
       const installed = installedVersion();
       if (!isNewer(info.version, installed)) return;
 
-      setPhase({ status: 'available', info, installed });
+      // The small build for this phone, decided once and carried through the
+      // whole flow so the size shown is the size downloaded.
+      setPhase({ status: 'available', info, installed, pkg: packageFor(info, cpuAbi()) });
     } catch {
       // Offline, or the feed is not there yet: nothing to say, nothing to break.
     } finally {
@@ -85,12 +96,14 @@ export function useUpdate() {
         return;
       }
 
-      setPhase({ status: 'downloading', info, progress: 0, received: 0, total: info.size });
+      const pkg = current.status === 'available' ? current.pkg : packageFor(info, cpuAbi());
+
+      setPhase({ status: 'downloading', info, progress: 0, received: 0, total: pkg.size });
 
       const file = await downloadUpdate(
-        info.url,
+        pkg.url,
         `shaikhs-${info.version}.apk`,
-        info.sha256,
+        pkg.sha256,
         (fraction, received, total) => {
           setPhase({ status: 'downloading', info, progress: fraction, received, total });
         },

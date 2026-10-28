@@ -169,6 +169,17 @@ class UpdaterModule : Module() {
       true
     }
 
+    /**
+     * This phone's CPU type, e.g. `arm64-v8a`.
+     *
+     * The build publishes one package per CPU, and the 64-bit one is roughly
+     * half the size. Asking the platform is the only honest way to pick, and it
+     * costs nothing.
+     */
+    Function("cpuAbi") {
+      Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
+    }
+
     /** Whether "install unknown apps" is already allowed for this app. */
     AsyncFunction("canInstall") {
       canInstallNow()

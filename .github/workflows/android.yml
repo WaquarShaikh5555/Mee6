@@ -124,8 +124,12 @@ jobs:
           cd android
           # arm64 + 32-bit ARM: every real phone. The two x86 ABIs only exist
           # for emulators and double the native build time for nothing.
+          # Compressed native libraries. They are unpacked on install, so the
+          # app costs the same on the phone but the download — the part that has
+          # to survive a mobile connection — is roughly 40% smaller.
           ./gradlew :app:assembleRelease \
             -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pexpo.useLegacyPackaging=true \
             --no-daemon --stacktrace 2>&1 | tee -a ../build.log
 
       - name: Check the build
@@ -260,27 +264,46 @@ jobs:
             // No notes for this version is fine: the prompt says so plainly.
           }
 
+          const crypto = require('crypto');
+          const base = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/apk`;
+
+          // Checksums are computed from the exact bytes published, so a download
+          // that arrives truncated is rejected on the phone instead of being
+          // handed to Android as a broken package.
+          const entry = (file) => ({
+            url: `${base}/${file}`,
+            size: fs.statSync(file).size,
+            sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),
+          });
+
           const feed = {
             version,
-            url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/apk/shaikhs.apk`,
-            size: fs.statSync('shaikhs.apk').size,
+            ...entry('shaikhs.apk'),
+            packages: {},
             notes,
             builtAt: new Date().toISOString(),
           };
 
-          // The checksum is computed from the exact bytes published, so a
-          // download that arrives truncated is rejected on the phone instead of
-          // being handed to Android as a broken package.
-          const crypto = require('crypto');
-          const bytes = fs.readFileSync('shaikhs.apk');
-          feed.sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+          // The small package for the phone asking. The app picks the entry that
+          // matches its CPU and falls back to the universal one.
+          const perCpu = {
+            'arm64-v8a': 'shaikhs-arm64.apk',
+            'armeabi-v7a': 'shaikhs-32bit.apk',
+          };
+
+          for (const [abi, file] of Object.entries(perCpu)) {
+            if (!fs.existsSync(file)) continue;
+            feed.packages[abi] = entry(file);
+          }
 
           fs.writeFileSync('version.json', JSON.stringify(feed, null, 2));
-          console.log('published version', version, feed.size, 'bytes', feed.sha256);
+          console.log('published', version, feed.size, 'bytes', feed.sha256);
+          console.log('per-CPU:', Object.keys(feed.packages).join(', ') || 'universal only');
           FEED
 
           cat > release-notes.md <<'NOTES'
-          **Shaikh's for Android** — download `shaikhs.apk` below and open it on your phone.
+          **Shaikh's for Android** — download `shaikhs-arm64.apk` below (or `shaikhs.apk`
+          if your phone is older than 2019) and open it on your phone.
 
           If Android asks, allow installing from this source. Built from the latest
           commit on this branch.

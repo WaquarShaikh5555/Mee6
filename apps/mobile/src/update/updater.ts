@@ -11,6 +11,8 @@ type Progress = { received: number; total: number };
 type UpdaterNativeModule = {
   /** `expected` is the feed's SHA-256; empty means "do not check". */
   download(url: string, name: string, expected: string): Promise<Downloaded>;
+  /** Android's own name for this phone's CPU, e.g. "arm64-v8a". */
+  cpuAbi(): string;
   /** False when "install unknown apps" has not been allowed for this app yet. */
   install(uri: string): Promise<boolean>;
   canInstall(): Promise<boolean>;
@@ -32,6 +34,20 @@ function nativeModule(): UpdaterNativeModule | null {
 /** False in the browser and in Expo Go. */
 export function isUpdaterAvailable(): boolean {
   return nativeModule() !== null;
+}
+
+/**
+ * This phone's CPU type, so the small package can be chosen.
+ *
+ * Null when there is no native module: on the web there is nothing to install
+ * and no answer to give.
+ */
+export function cpuAbi(): string | null {
+  try {
+    return nativeModule()?.cpuAbi() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -13,7 +13,14 @@ import { ThemeProvider } from '@/theme/ThemeProvider';
 import { UpdateSheet } from '@/update/UpdateSheet';
 import type { UpdatePhase } from '@/update/useUpdate';
 import { downloadUpdate } from '@/update/updater';
-import { compareVersions, isNewer, parseFeed, sizeFor, type UpdateInfo } from '@/update/version';
+import {
+  compareVersions,
+  isNewer,
+  packageFor,
+  parseFeed,
+  sizeFor,
+  type UpdateInfo,
+} from '@/update/version';
 
 jest.mock('expo-modules-core', () => {
   const actual = jest.requireActual('expo-modules-core');
@@ -38,10 +45,16 @@ const info: UpdateInfo = {
   url: 'https://github.com/example/releases/download/apk/shaikhs.apk',
   size: 63_076_672,
   sha256: HASH,
+  packages: {},
   notes: ['Updates install from inside the app.', 'Signing got a real editor.'],
 };
 
-const available: UpdatePhase = { status: 'available', info, installed: '0.8.0' };
+const available: UpdatePhase = {
+  status: 'available',
+  info,
+  installed: '0.8.0',
+  pkg: { url: info.url, size: info.size, sha256: HASH },
+};
 
 describe('versions', () => {
   it('compares numerically, not alphabetically', () => {
@@ -64,6 +77,7 @@ describe('versions', () => {
       url: 'https://x/y.apk',
       size: 10,
       sha256: '',
+      packages: {},
       notes: ['a'],
     });
 
@@ -82,6 +96,7 @@ describe('versions', () => {
       url: 'https://x/y.apk',
       size: 0,
       sha256: '',
+      packages: {},
       notes: ['ok'],
     });
   });
@@ -95,6 +110,45 @@ describe('versions', () => {
     expect(parseFeed({ ...feed, sha256: 'abc' })?.sha256).toBe('');
     expect(parseFeed({ ...feed, sha256: 42 })?.sha256).toBe('');
     expect(parseFeed({ ...feed, sha256: undefined })?.sha256).toBe('');
+  });
+
+  it('reads the per-CPU packages, and ignores the ones that are not links', () => {
+    const parsed = parseFeed({
+      version: '1.0.0',
+      url: 'https://x/universal.apk',
+      packages: {
+        'arm64-v8a': { url: 'https://x/arm64.apk', size: 30, sha256: HASH },
+        'armeabi-v7a': { url: 'http://x/32.apk', size: 28 },
+        'x86_64': { url: 'not a link' },
+      },
+    });
+
+    expect(parsed?.packages).toEqual({
+      'arm64-v8a': { url: 'https://x/arm64.apk', size: 30, sha256: HASH },
+    });
+  });
+
+  it('offers a 64-bit phone the small package, and everyone else the universal one', () => {
+    const feed = parseFeed({
+      version: '1.0.0',
+      url: 'https://x/universal.apk',
+      size: 60,
+      sha256: HASH,
+      packages: {
+        'arm64-v8a': { url: 'https://x/arm64.apk', size: 30, sha256: HASH },
+        'armeabi-v7a': { url: 'https://x/32.apk', size: 28, sha256: HASH },
+      },
+    })!;
+
+    expect(packageFor(feed, 'arm64-v8a').url).toBe('https://x/arm64.apk');
+    expect(packageFor(feed, 'armeabi-v7a').url).toBe('https://x/32.apk');
+    // A CPU the feed has nothing special for still gets an installable file.
+    expect(packageFor(feed, 'x86_64')).toEqual({
+      url: 'https://x/universal.apk',
+      size: 60,
+      sha256: HASH,
+    });
+    expect(packageFor(feed, null).url).toBe('https://x/universal.apk');
   });
 
   it('says how big a download is', () => {
@@ -112,6 +166,7 @@ describe('the download is checked, not assumed', () => {
     openInstallSettings: jest.fn(),
     discard: jest.fn(),
     addListener: jest.fn(),
+    cpuAbi: jest.fn(() => 'arm64-v8a'),
   };
 
   const subscription = { remove: jest.fn() };
@@ -119,6 +174,7 @@ describe('the download is checked, not assumed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     bridge.addListener.mockReturnValue(subscription);
+    bridge.cpuAbi = jest.fn(() => 'arm64-v8a');
     bridge.download.mockResolvedValue({ uri: 'file:///cache/updater/shaikhs-0.9.1.apk', bytes: 10, sha256: HASH });
 
     const core = jest.requireMock('expo-modules-core') as { requireOptionalNativeModule: jest.Mock };
