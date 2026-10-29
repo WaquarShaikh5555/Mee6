@@ -15,7 +15,14 @@ import { Button } from '@/ui/Button';
 import { Text } from '@/ui/Text';
 import { useTheme } from '@/theme/ThemeProvider';
 import { renderPage } from '../engine';
-import { strokePath, type Placement, type SignatureInk, type Stroke } from '../signature';
+import {
+  inkBounds,
+  strokePath,
+  strokeWeight,
+  type Placement,
+  type SignatureInk,
+  type Stroke,
+} from '../signature';
 
 /**
  * Putting the signature on the page.
@@ -186,6 +193,21 @@ export function SignaturePlacementSheet({
         </View>
 
         <View style={{ flex: 1, paddingHorizontal: theme.space.lg }}>
+          {!ink ? (
+            <View
+              style={{
+                marginBottom: theme.space.md,
+                padding: theme.space.md,
+                borderRadius: theme.radius.md,
+                backgroundColor: theme.colors.dangerSubtle,
+              }}
+            >
+              <Text variant="footnote" tone="danger">
+                There is no signature to place. Go back and draw one, or choose a photo of it.
+              </Text>
+            </View>
+          ) : null}
+
           <PageStage
             ink={ink}
             image={pageImage}
@@ -466,6 +488,7 @@ function PageStage({
 
   return (
     <View
+      testID="signature-stage"
       onLayout={(event) =>
         onLayout({
           width: event.nativeEvent.layout.width,
@@ -503,6 +526,7 @@ function PageStage({
           {placement && ink ? (
             <View
               pointerEvents="none"
+              accessibilityLabel="Your signature, on the page. Drag it, pinch to resize."
               style={{
                 position: 'absolute',
                 left: pageWidth * placement.x - (pageWidth * placement.w) / 2,
@@ -512,17 +536,53 @@ function PageStage({
                 transform: [{ rotate: `${placement.rotation}deg` }],
               }}
             >
+              {/*
+                The frame is what makes this an object on the page rather than a
+                mark floating in white space: something to aim a finger at, and
+                proof that the signature is there even when it is thin.
+              */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderWidth: 1,
+                  borderStyle: 'dashed',
+                  borderColor: theme.colors.accent,
+                  // No radius: Android only honours a dashed border on a
+                  // rectangle with square corners, and this one is already
+                  // rotated by the placement's own angle.
+                  borderRadius: 0,
+                }}
+              />
+
+              {[
+                { top: -4, left: -4 },
+                { top: -4, right: -4 },
+                { bottom: -4, left: -4 },
+                { bottom: -4, right: -4 },
+              ].map((corner, index) => (
+                <View
+                  key={index}
+                  style={{
+                    position: 'absolute',
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: theme.colors.accent,
+                    ...corner,
+                  }}
+                />
+              ))}
+
               {ink.kind === 'photo' ? (
                 <Image
                   source={{ uri: ink.file }}
                   resizeMode="contain"
                   accessibilityIgnoresInvertColors
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderWidth: 1,
-                    borderColor: theme.colors.accent,
-                  }}
+                  style={{ width: '100%', height: '100%' }}
                 />
               ) : (
                 <InkPreview strokes={ink.strokes} colour={ink.colour} />
@@ -537,35 +597,16 @@ function PageStage({
 
 /** The drawn signature, scaled into whatever box the placement asks for. */
 function InkPreview({ strokes, colour }: { strokes: Stroke[]; colour: string }) {
-  const bounds = useMemo(() => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    for (const stroke of strokes) {
-      for (const point of stroke) {
-        minX = Math.min(minX, point.x);
-        minY = Math.min(minY, point.y);
-        maxX = Math.max(maxX, point.x);
-        maxY = Math.max(maxY, point.y);
-      }
-    }
-
-    if (!Number.isFinite(minX)) return { minX: 0, minY: 0, width: 1, height: 1 };
-    return {
-      minX,
-      minY,
-      width: Math.max(0.001, maxX - minX),
-      height: Math.max(0.001, maxY - minY),
-    };
-  }, [strokes]);
+  // The same bounds the thumbnail and the tests use: padded by a hair so a
+  // round cap at the edge of the ink is not sliced off by the viewBox.
+  const bounds = useMemo(() => inkBounds(strokes), [strokes]);
 
   // The SVG is drawn in the ink's own units, then stretched to the box by the
-  // viewBox — no maths beyond the bounds above.
+  // viewBox — no maths beyond the bounds above, and a stroke weight that
+  // survives the stretch.
   return (
     <Svg
-      viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}
+      viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
       style={{ width: '100%', height: '100%' }}
     >
       {strokes.map((stroke, index) => (
@@ -573,11 +614,12 @@ function InkPreview({ strokes, colour }: { strokes: Stroke[]; colour: string }) 
           key={index}
           d={strokePath(stroke, 1, 1)}
           stroke={colour}
-          strokeWidth={0.008}
+          // In the ink's own units, so it scales with the box. Never
+          // `non-scaling-stroke`: that measures the width in screen pixels.
+          strokeWidth={strokeWeight(bounds.w)}
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          vectorEffect="non-scaling-stroke"
         />
       ))}
     </Svg>

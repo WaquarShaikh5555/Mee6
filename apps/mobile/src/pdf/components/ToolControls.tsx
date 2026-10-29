@@ -19,6 +19,7 @@ import {
   parsePayload,
   payloadJson,
   strokePath,
+  strokeWeight,
   type SignatureInk,
   type SignaturePayload,
 } from '../signature';
@@ -1083,11 +1084,13 @@ function InkThumb({ ink }: { ink: SignatureInk }) {
           key={index}
           d={strokePath(stroke, 1, 1)}
           stroke={ink.colour}
-          strokeWidth={0.006}
+          // Proportional to the ink's own width. A fixed number with
+          // `non-scaling-stroke` would be measured in pixels, and 0.006 of a
+          // pixel is nothing at all — a signature that drew fine and vanished.
+          strokeWidth={strokeWeight(bounds.w)}
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          vectorEffect="non-scaling-stroke"
         />
       ))}
     </Svg>

@@ -256,6 +256,24 @@ export function strokePath(stroke: Stroke, scaleX: number, scaleY: number): stri
   return path;
 }
 
+/**
+ * How thick to draw the ink, in the same units the points use.
+ *
+ * Proportional, never a constant: the points are fractions of the pad, and the
+ * viewBox that draws them is scaled to whatever box the screen gives it. A
+ * fixed number would be invisible in one place and a fat blob in another — and
+ * `vectorEffect="non-scaling-stroke"` makes the number *pixels*, which turns a
+ * sensible-looking 0.008 into a line 1/125th of a pixel wide. That is exactly
+ * how a signature that was drawn perfectly came out as an empty page.
+ *
+ * 1.2% of the ink's width is what a pen looks like at this size, and it stays
+ * the same whether the box is a thumbnail or a full page.
+ */
+export function strokeWeight(boundsWidth: number): number {
+  if (!Number.isFinite(boundsWidth) || boundsWidth <= 0) return 0.008;
+  return Math.max(0.0015, boundsWidth * 0.012);
+}
+
 /** The ink's own bounding box, in the same fractions the points use. */
 export function inkBounds(strokes: Stroke[]): { x: number; y: number; w: number; h: number } {
   let minX = Infinity;

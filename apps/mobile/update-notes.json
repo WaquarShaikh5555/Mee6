@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.9.4": [
+    "Signing: the ink now shows on the page while you place it, in a frame you can drag.",
+    "The signature in the card on the tool screen is visible too, instead of a white box.",
+    "Everything else is unchanged: 21 PDF tools, results saved to Downloads, one-tap updates."
+  ],
   "0.9.3": [
     "A \"lite\" edition of the app now installs with no security prompt at all — it leaves Regain out.",
     "The full app still has Regain; Play Protect blocks it until you switch scanning off once.",

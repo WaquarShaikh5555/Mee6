@@ -152,7 +152,16 @@ Two screens instead, each doing one thing:
    engine crops to the ink and fades the paper to transparent, so what lands on the page is
    handwriting rather than a white rectangle.
 2. **The page**, with the signature on it — drag to move, pinch to size, twist to tilt, and a
-   page strip so the same signature can go on page 1 and page 7 at different spots.
+   page strip so the same signature can go on page 1 and page 7 at different spots. It sits in
+   a dashed frame with corner marks: a signature is thin ink, and something has to show where to
+   put a finger and prove the ink is really there.
+
+The preview draws the strokes in the ink's **own units**, with a weight proportional to its
+width. It must never use `vectorEffect="non-scaling-stroke"`: that redefines the stroke width as
+screen *pixels*, so a number that reads like a fraction of the ink becomes a line a thousandth
+of a pixel wide. That is precisely how 0.8.0 shipped a signature pad that drew fine and a page
+that stayed blank; `__tests__/pdfSignPlacement.test.tsx` now asserts the weight is drawable, not
+merely present.
 
 The engine receives fractions of the *visible* page — 0–1 across, 0–1 down — plus a rotation.
 A PDF page is bottom-left origin and may carry its own `/Rotate`, so one function,
