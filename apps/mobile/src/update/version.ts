@@ -64,20 +64,40 @@ function parsePackage(raw: unknown): UpdatePackage | null {
 }
 
 /**
+ * Which edition this build is.
+ *
+ * The lite edition has no accessibility service, so Regain reports it is not in
+ * this build — that is the one cheap, local fact that tells the two apart. It
+ * matters for updates: a lite install must never be handed the full package,
+ * because that would quietly give someone Regain they did not ask for.
+ */
+export type Edition = 'full' | 'lite';
+
+/**
  * The smallest package built for this phone.
  *
- * `abi` is what Android reports (`arm64-v8a`, `armeabi-v7a`, `x86_64`…). An
- * unknown or missing ABI, and any build the feed has no entry for, falls back
- * to the universal package — the one that runs everywhere.
+ * `abi` is what Android reports (`arm64-v8a`, `armeabi-v7a`, `x86_64`…). A full
+ * build falls back to the universal package — the one that runs everywhere. A
+ * lite build only takes a lite package: no entry means no update, which is
+ * better than silently changing what is installed.
  */
-export function packageFor(info: UpdateInfo, abi: string | null): UpdatePackage {
+export function packageFor(
+  info: UpdateInfo,
+  abi: string | null,
+  edition: Edition = 'full',
+): UpdatePackage | null {
   const universal: UpdatePackage = { url: info.url, size: info.size, sha256: info.sha256 };
-  if (!abi) return universal;
+
+  if (!abi) return edition === 'lite' ? null : universal;
 
   const name = abi.trim().toLowerCase();
-  const key = name.startsWith('arm64') ? 'arm64-v8a' : name.startsWith('arm') ? 'armeabi-v7a' : '';
+  const cpu = name.startsWith('arm64') ? 'arm64-v8a' : name.startsWith('arm') ? 'armeabi-v7a' : '';
 
-  return (key && info.packages[key]) || universal;
+  if (!cpu) return edition === 'lite' ? null : universal;
+
+  if (edition === 'lite') return info.packages[`${cpu}-lite`] ?? null;
+
+  return info.packages[cpu] ?? universal;
 }
 
 /** What is installed right now. */

@@ -140,15 +140,39 @@ describe('versions', () => {
       },
     })!;
 
-    expect(packageFor(feed, 'arm64-v8a').url).toBe('https://x/arm64.apk');
-    expect(packageFor(feed, 'armeabi-v7a').url).toBe('https://x/32.apk');
+    expect(packageFor(feed, 'arm64-v8a')?.url).toBe('https://x/arm64.apk');
+    expect(packageFor(feed, 'armeabi-v7a')?.url).toBe('https://x/32.apk');
     // A CPU the feed has nothing special for still gets an installable file.
     expect(packageFor(feed, 'x86_64')).toEqual({
       url: 'https://x/universal.apk',
       size: 60,
       sha256: HASH,
     });
-    expect(packageFor(feed, null).url).toBe('https://x/universal.apk');
+    expect(packageFor(feed, null)?.url).toBe('https://x/universal.apk');
+  });
+
+  it('never hands a lite build the full package', () => {
+    const feed = parseFeed({
+      version: '1.0.0',
+      url: 'https://x/universal.apk',
+      size: 60,
+      sha256: HASH,
+      packages: {
+        'arm64-v8a': { url: 'https://x/arm64.apk', size: 30, sha256: HASH },
+        'arm64-v8a-lite': { url: 'https://x/arm64-lite.apk', size: 30, sha256: HASH },
+      },
+    })!;
+
+    // Lite takes the lite package …
+    expect(packageFor(feed, 'arm64-v8a', 'lite')?.url).toBe('https://x/arm64-lite.apk');
+
+    // … and gets no offer at all rather than a quiet change of edition when
+    // the feed has none for its CPU. (The 32-bit lite build here.)
+    expect(packageFor(feed, 'armeabi-v7a', 'lite')).toBeNull();
+    expect(packageFor(feed, null, 'lite')).toBeNull();
+
+    // The full build keeps its own fallback.
+    expect(packageFor(feed, 'armeabi-v7a', 'full')?.url).toBe('https://x/universal.apk');
   });
 
   it('says how big a download is', () => {

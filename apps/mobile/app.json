@@ -2,7 +2,7 @@
   "expo": {
     "name": "Shaikh's",
     "slug": "shaikhs",
-    "version": "0.9.4",
+    "version": "0.9.5",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "shaikhs",

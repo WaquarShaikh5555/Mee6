@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.9.5": [
+    "Signing: the ink shows on the page while you place it, in a frame you can drag.",
+    "The lite edition now updates to the lite edition — never back to the build with Regain.",
+    "PDF Arena unchanged otherwise: 21 tools, results saved to Downloads, one-tap updates."
+  ],
   "0.9.4": [
     "Signing: the ink now shows on the page while you place it, in a frame you can drag.",
     "The signature in the card on the tool screen is visible too, instead of a white box.",

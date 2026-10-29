@@ -350,11 +350,15 @@ jobs:
             builtAt: new Date().toISOString(),
           };
 
-          // The small package for the phone asking. The app picks the entry that
-          // matches its CPU and falls back to the universal one.
+          // The small package for the phone asking, per edition. The app picks
+          // the entry matching its CPU *and* the edition it is running, and
+          // falls back to the universal one only in the full edition — a lite
+          // install must never be quietly upgraded to the build with Regain.
           const perCpu = {
             'arm64-v8a': 'shaikhs-arm64.apk',
             'armeabi-v7a': 'shaikhs-32bit.apk',
+            'arm64-v8a-lite': 'shaikhs-arm64-lite.apk',
+            'armeabi-v7a-lite': 'shaikhs-32bit-lite.apk',
           };
 
           for (const [abi, file] of Object.entries(perCpu)) {

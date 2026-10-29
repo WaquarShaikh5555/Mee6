@@ -43,12 +43,17 @@ than the installed size; Android unpacks them on install. The universal package
 is therefore near 63 MB and the 64-bit one near 35 MB.
 
 The release notes carry the exact byte count and SHA-256 of each one, and the
-feed carries the same for `shaikhs.apk` plus an entry per CPU type, so:
+feed carries the same for `shaikhs.apk` plus an entry per CPU type and per
+edition (`arm64-v8a`, `arm64-v8a-lite`, …), so:
 
 - A download that was cut short is caught before Android has to refuse it.
 - An in-app update downloads the package built for that phone's CPU — around
   half the bytes of the universal one — and falls back to the universal package
   if the feed has no entry for it.
+- A **lite** install only ever takes a lite package. The app asks Regain which
+  edition it is (`not-in-this-build` means lite) and, if the feed has no lite
+  package for that CPU, offers no update at all rather than quietly installing
+  the edition with Regain in it.
 
 ## When Android says the package appears to be invalid
 

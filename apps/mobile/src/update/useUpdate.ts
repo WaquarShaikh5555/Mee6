@@ -9,12 +9,15 @@ import {
   isUpdaterAvailable,
   openInstallSettings,
 } from './updater';
+import { getEnforcementStatus } from '@/regain/enforcement';
+
 import {
   UPDATE_FEED,
   installedVersion,
   isNewer,
   packageFor,
   parseFeed,
+  type Edition,
   type UpdateInfo,
   type UpdatePackage,
 } from './version';
@@ -40,11 +43,29 @@ export type UpdatePhase =
 
 const FEED_TIMEOUT_MS = 8_000;
 
+/**
+ * Full or lite, asked once per check.
+ *
+ * The lite build has no accessibility service, and Regain says exactly that.
+ * Anything else — including a module that cannot answer — is treated as the
+ * full build, which is the edition that has always been published.
+ */
+async function editionOf(): Promise<Edition> {
+  try {
+    const status = await getEnforcementStatus();
+    return status.availability === 'not-in-this-build' ? 'lite' : 'full';
+  } catch {
+    return 'full';
+  }
+}
+
 export function useUpdate() {
   const [phase, setPhase] = useState<UpdatePhase>({ status: 'idle' });
   const [dismissed, setDismissed] = useState(false);
   const busy = useRef(false);
   const download = useRef<string | null>(null);
+  /** Chosen at check time; re-deriving it later could pick another edition. */
+  const chosen = useRef<UpdatePackage | null>(null);
 
   const check = useCallback(async () => {
     if (!isUpdaterAvailable()) return;
@@ -68,9 +89,15 @@ export function useUpdate() {
       const installed = installedVersion();
       if (!isNewer(info.version, installed)) return;
 
-      // The small build for this phone, decided once and carried through the
-      // whole flow so the size shown is the size downloaded.
-      setPhase({ status: 'available', info, installed, pkg: packageFor(info, cpuAbi()) });
+      // The small build for this phone *and this edition*, decided once and
+      // carried through the whole flow so the size shown is the size
+      // downloaded. A lite build with no lite package for its CPU gets no
+      // offer rather than a quiet change of edition.
+      const pkg = packageFor(info, cpuAbi(), await editionOf());
+      if (!pkg) return;
+
+      chosen.current = pkg;
+      setPhase({ status: 'available', info, installed, pkg });
     } catch {
       // Offline, or the feed is not there yet: nothing to say, nothing to break.
     } finally {
@@ -96,7 +123,8 @@ export function useUpdate() {
         return;
       }
 
-      const pkg = current.status === 'available' ? current.pkg : packageFor(info, cpuAbi());
+      const pkg = current.status === 'available' ? current.pkg : chosen.current;
+      if (!pkg) return;
 
       setPhase({ status: 'downloading', info, progress: 0, received: 0, total: pkg.size });
 
