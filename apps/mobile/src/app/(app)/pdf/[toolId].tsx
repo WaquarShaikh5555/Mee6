@@ -24,6 +24,9 @@ import { ErrorCard, ResultCard } from '@/pdf/components/ResultCard';
 import { FileCard } from '@/pdf/components/FileCard';
 import { PageThumb } from '@/pdf/components/PageThumb';
 import { ToolField } from '@/pdf/components/ToolControls';
+import { UnlockCard } from '@/ads/UnlockCard';
+import { isProTool } from '@/ads/pro';
+import { useUnlock } from '@/ads/useUnlock';
 
 /** The verb on the button. A tool screen should read as an action. */
 const ACTIONS: Record<PdfToolId, string> = {
@@ -106,6 +109,12 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
   // Images are not PDFs: probing one would report a failure that is not one.
   const doc = usePdfDocument(tool.input === 'images' ? null : (files[0] ?? null));
   const { state, run, reset } = useToolRun();
+
+  // Pro tools ask at the door, before a single file is chosen. A wall after the
+  // work is done is the one thing people never forgive.
+  const { unlocked, loading: checkingUnlock } = useUnlock();
+  const [gateDismissed, setGateDismissed] = useState(false);
+  const gated = isProTool(tool.id) && !unlocked && !checkingUnlock && !gateDismissed;
 
   const multiple = tool.input === 'pdfs';
   const images = tool.input === 'images';
@@ -201,7 +210,7 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
   return (
     <Screen
       footer={
-        done ? undefined : (
+        done || gated ? undefined : (
           <View style={{ gap: theme.space.sm }}>
             {blocker ? (
               <Text variant="footnote" tone="tertiary" align="center" accessibilityLiveRegion="polite">
@@ -241,7 +250,15 @@ function ProcessingToolScreen({ tool }: { tool: PdfTool }) {
         </Text>
       </View>
 
-      {done ? (
+      {gated ? (
+        <Card style={{ gap: theme.space.lg }}>
+          <UnlockCard
+            toolName={tool.name}
+            onClose={() => setGateDismissed(true)}
+            onUnlocked={() => setGateDismissed(false)}
+          />
+        </Card>
+      ) : done ? (
         <>
           <ResultCard
             result={state.result}

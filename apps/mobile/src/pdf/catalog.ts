@@ -115,6 +115,15 @@ export type PdfTool = {
   };
   /** The result is a single figure rather than a file (Compare). */
   reportsOnly?: boolean;
+  /**
+   * Part of the paid set: open while the 48-hour unlock is running.
+   *
+   * Everything a person needs to *finish* a document is free — read it, merge
+   * it, split it, turn it, delete pages, sign it. The per-tool maths is that a
+   * tool used once a month can wait for an unlock, and a tool used every day
+   * must never be a toll booth.
+   */
+  pro?: boolean;
 };
 
 export const CATEGORIES: { id: PdfCategory; blurb: string }[] = [
@@ -304,6 +313,7 @@ export const PDF_TOOLS: PdfTool[] = [
       pagesAll,
     ],
     output: { extension: 'pdf', suffix: '-watermarked' },
+    pro: true,
   },
   {
     id: 'page-numbers',
@@ -352,6 +362,7 @@ export const PDF_TOOLS: PdfTool[] = [
       },
     ],
     output: { extension: 'pdf', suffix: '-numbered' },
+    pro: true,
   },
   {
     id: 'bookmarks',
@@ -364,6 +375,7 @@ export const PDF_TOOLS: PdfTool[] = [
     input: 'pdf',
     options: [{ kind: 'bookmarks', id: 'bookmarks', label: 'Entries' }],
     output: { extension: 'pdf', suffix: '-bookmarked' },
+    pro: true,
   },
 
   /* --------------------------------------------------------- Optimise --- */
@@ -407,6 +419,7 @@ export const PDF_TOOLS: PdfTool[] = [
       },
     ],
     output: { extension: 'pdf', suffix: '-gray' },
+    pro: true,
   },
   {
     id: 'repair',
@@ -419,6 +432,7 @@ export const PDF_TOOLS: PdfTool[] = [
     input: 'pdf',
     options: [],
     output: { extension: 'pdf', suffix: '-repaired' },
+    pro: true,
   },
   {
     id: 'compare',
@@ -432,6 +446,7 @@ export const PDF_TOOLS: PdfTool[] = [
     options: [],
     output: { extension: 'pdf', suffix: '-compared' },
     reportsOnly: true,
+    pro: true,
   },
 
   /* ----------------------------------------------------------- Secure --- */
@@ -457,6 +472,7 @@ export const PDF_TOOLS: PdfTool[] = [
       },
     ],
     output: { extension: 'pdf', suffix: '-protected' },
+    pro: true,
   },
   {
     id: 'unlock',
@@ -479,6 +495,7 @@ export const PDF_TOOLS: PdfTool[] = [
       },
     ],
     output: { extension: 'pdf', suffix: '-unlocked' },
+    pro: true,
   },
   {
     id: 'metadata',
@@ -503,6 +520,7 @@ export const PDF_TOOLS: PdfTool[] = [
       },
     ],
     output: { extension: 'pdf', suffix: '-tagged' },
+    pro: true,
   },
 
   /* ---------------------------------------------------------- Convert --- */
@@ -576,6 +594,7 @@ export const PDF_TOOLS: PdfTool[] = [
     input: 'pdf',
     options: [pagesAll],
     output: { extension: 'zip', suffix: '-pages' },
+    pro: true,
   },
   {
     id: 'extract-images',
@@ -588,6 +607,7 @@ export const PDF_TOOLS: PdfTool[] = [
     input: 'pdf',
     options: [pagesAll],
     output: { extension: 'png', suffix: '-assets' },
+    pro: true,
   },
   {
     id: 'pdf2text',

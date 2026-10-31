@@ -11,6 +11,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { CATEGORIES, PDF_TOOLS, searchTools, toolsIn } from '@/pdf/catalog';
 import { isEngineAvailable } from '@/pdf/engine';
 import { NoteBlock } from '@/pdf/components/ToolControls';
+import { ProNote } from '@/ads/UnlockCard';
 import { ToolTile } from '@/pdf/components/ToolTile';
 
 /**
@@ -40,6 +41,10 @@ export default function PdfArenaScreen() {
           {PDF_TOOLS.length} tools that work on the file in your hand. No account, no queue, no
           upload — the document never leaves this phone.
         </Text>
+      </View>
+
+      <View style={{ paddingBottom: theme.space.lg }}>
+        <ProNote />
       </View>
 
       {!engine ? (

@@ -253,6 +253,15 @@ export default function RegainScreen() {
             body="When a screen is blocked, hold the button for two seconds. Enough friction to notice the reflex, not enough to trap you."
           />
 
+          {/* Said out loud, in the app, because it is a promise and not an
+              oversight: the ad that pays for Shaikh's lives in PDF Arena, never
+              here. */}
+          <Explain
+            icon="leaf-outline"
+            title="Regain has no ads"
+            body="Shaikh's is paid for by one optional ad in PDF Arena. Nothing in Regain will ever try to sell you something, and nothing here is timed, unlocked or limited."
+          />
+
           {enforcement ? (
             <Explain
               icon={unavailable ? 'information-circle-outline' : 'phone-portrait-outline'}
