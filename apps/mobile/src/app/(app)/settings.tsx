@@ -94,7 +94,7 @@ export default function SettingsScreen() {
           <Card padded={false} style={{ overflow: 'hidden' }}>
             <ListRow
               title="Developer options"
-              subtitle="Diagnostics, what Regain sees, and shared tools"
+              subtitle="Diagnostics, what Focus Mode sees, and shared tools"
               icon="construct-outline"
               onPress={() => router.push('/developer')}
             />

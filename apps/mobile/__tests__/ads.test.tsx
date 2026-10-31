@@ -120,10 +120,14 @@ describe('the identifiers cannot drift apart', () => {
     expect(plugin?.[1]?.androidAppId).toBe(AD_APP_ID);
   });
 
-  it('uses well-formed unit ids, and admits when they are the sample ones', () => {
+  it('carries the live units, not the samples', () => {
+    // Well-formed, and actually earning. The sample ids serve test ads, which
+    // pay nothing — a build that ships with them looks fine and earns zero.
     expect(AD_APP_ID).toMatch(/^ca-app-pub-\d{16}~\d{10}$/);
     expect(REWARDED_UNIT_ID).toMatch(/^ca-app-pub-\d{16}\/\d{10}$/);
-    expect(USING_TEST_ADS).toBe(true);
+    expect(AD_APP_ID).not.toBe('ca-app-pub-3940256099942544~3347511713');
+    expect(REWARDED_UNIT_ID).not.toBe('ca-app-pub-3940256099942544/5224354917');
+    expect(USING_TEST_ADS).toBe(false);
   });
 });
 
@@ -236,8 +240,7 @@ describe('the ad itself', () => {
 
 describe('the card', () => {
   beforeEach(() => {
-    // A build that *has* the SDK, which is the only one that can show the
-    // "Test ad" line — the point of the test below.
+    // A build that *has* the SDK: the only one where a gate could earn.
     __setAdsForTests(fakeAds('earned'));
   });
 
@@ -247,8 +250,8 @@ describe('the card', () => {
     expect(screen.getByText('One ad, 48 hours')).toBeTruthy();
     expect(screen.getByText(/merge, split, delete, rearrange, rotate, sign/)).toBeTruthy();
     expect(screen.getByText('Watch an ad — 48 hours free')).toBeTruthy();
-    // And it is honest that this build is not earning yet.
-    expect(screen.getByText(/Test ad/)).toBeTruthy();
+    // A live build does not advertise that it is showing a test ad.
+    expect(screen.queryByText(/Test ad/)).toBeNull();
   });
 
   it('lets someone leave without watching anything', async () => {

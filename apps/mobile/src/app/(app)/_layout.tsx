@@ -26,12 +26,12 @@ export default function AppLayout() {
       <Stack.Screen name="pdf/[toolId]" />
       {/* A viewer is a place you enter and leave, not a page in the stack. */}
       <Stack.Screen name="pdf/viewer" options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="regain/index" />
-      <Stack.Screen name="regain/[appId]" />
+      <Stack.Screen name="focus/index" />
+      <Stack.Screen name="focus/[appId]" />
       {/* Reaching a blocked screen should feel like a wall, not a page turn:
           no swipe-back gesture, no slide animation. */}
       <Stack.Screen
-        name="regain/blocked"
+        name="focus/blocked"
         options={{ animation: 'fade', gestureEnabled: false }}
       />
     </Stack>

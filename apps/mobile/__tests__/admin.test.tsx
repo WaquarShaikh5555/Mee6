@@ -49,7 +49,7 @@ const mockAuth = {
 
 jest.mock('@/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
 
-const mockRegain = {
+const mockFocus = {
   isReady: true,
   enabled: true,
   state: { version: 1, enabled: true, rules: { instagram: ['reels'] }, interventions: {} },
@@ -64,7 +64,7 @@ const mockRegain = {
   resetRules: jest.fn(),
 };
 
-jest.mock('@/regain/RegainProvider', () => ({ useRegain: () => mockRegain }));
+jest.mock('@/focus/FocusProvider', () => ({ useFocus: () => mockFocus }));
 
 jest.mock('expo-constants', () => ({
   __esModule: true,
@@ -103,14 +103,14 @@ describe('owner gate', () => {
   it('refuses an ordinary account the developer screen', async () => {
     const view = await wrap(<DeveloperScreen />);
     expect(view.getByText('Not available')).toBeTruthy();
-    expect(view.queryByText('What Regain last saw')).toBeNull();
+    expect(view.queryByText('What Focus Mode last saw')).toBeNull();
   });
 
   it('shows the owner what is in force', async () => {
     mockUser.isAdmin = true;
     const view = await wrap(<DeveloperScreen />);
     expect(view.getByText('Owner tools')).toBeTruthy();
-    expect(view.getByText('What Regain last saw')).toBeTruthy();
+    expect(view.getByText('What Focus Mode last saw')).toBeTruthy();
     expect(view.getByText('Rules in force')).toBeTruthy();
     expect(view.getByText('reels')).toBeTruthy();
   });

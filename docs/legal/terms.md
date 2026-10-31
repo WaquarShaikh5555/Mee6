@@ -2,7 +2,9 @@
 
 The agreement between you and Shaikh’s, in plain language.
 
-*Last updated 23 October 2026.*
+*Last updated 31 October 2026.*
+
+*Focus Mode was called Regain before version 0.11.0. The name changed; what the feature does, and what it can see, did not.*
 
 ## Agreeing to these terms
 
@@ -10,13 +12,13 @@ By creating an account or using Shaikh’s, you agree to these terms and to the 
 
 ## What Shaikh’s is
 
-Shaikh’s is a personal tool for reducing compulsive use of social apps. Regain closes the endless parts of an app — the Reels feed, Shorts, Spotlight — while leaving messages and anything sent to you working.
+Shaikh’s is a personal tool for reducing compulsive use of social apps. Focus Mode closes the endless parts of an app — the Reels feed, Shorts, Spotlight — while leaving messages and anything sent to you working.
 
 It is not a medical device, not therapy, and not a treatment for addiction. It cannot diagnose anything and it does not replace professional help. If these apps are costing you more than they give you, talking to someone is worth more than any setting.
 
 ## What it cannot promise
 
-Blocking depends on recognising a screen inside another company’s app. Those apps change constantly. Regain is built to fail in the safe direction — if it does not recognise a screen, it does nothing — but that also means a new version of Instagram can quietly stop it working until the detector is updated.
+Blocking depends on recognising a screen inside another company’s app. Those apps change constantly. Focus Mode is built to fail in the safe direction — if it does not recognise a screen, it does nothing — but that also means a new version of Instagram can quietly stop it working until the detector is updated.
 
 The app is provided as it is. There is no guarantee that a particular surface will be blocked, on a particular phone, on a particular day.
 
@@ -35,7 +37,7 @@ The app is provided as it is. There is no guarantee that a particular surface wi
 
 ## The accessibility permission
 
-Regain asks for Android’s accessibility permission, which is powerful and is granted by you, not by us. It is used only to recognise the screens you have asked to close and to show the reminder over them. You can revoke it at any time in your phone’s settings; the app keeps working, it simply stops blocking.
+Focus Mode asks for Android’s accessibility permission, which is powerful and is granted by you, not by us. It is used only to recognise the screens you have asked to close and to show the reminder over them. You can revoke it at any time in your phone’s settings; the app keeps working, it simply stops blocking.
 
 ## What is yours, what is ours
 
@@ -47,7 +49,7 @@ The app is provided free of charge and may change, be suspended, or be discontin
 
 ## Liability
 
-To the extent the law allows, the author is not liable for indirect or consequential loss arising from use of the app, including time spent on an app that Regain failed to block. Nothing in these terms limits liability that cannot lawfully be limited.
+To the extent the law allows, the author is not liable for indirect or consequential loss arising from use of the app, including time spent on an app that Focus Mode failed to block. Nothing in these terms limits liability that cannot lawfully be limited.
 
 ## Ending it
 

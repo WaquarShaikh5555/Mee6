@@ -32,12 +32,12 @@ export const PRIVACY: LegalDocument = {
   id: 'privacy',
   title: 'Privacy policy',
   summary: 'What Shaikh’s keeps, where it goes, and the parts that never leave your phone.',
-  updated: '23 October 2026',
+  updated: '31 October 2026',
   sections: [
     {
       heading: 'The short version',
       body: [
-        'Shaikh’s has an account, because you asked for one that works across devices. Everything Regain does stays on your phone.',
+        'Shaikh’s has an account, because you asked for one that works across devices. Everything Focus Mode does stays on your phone.',
         'There are no analytics, no advertising, no trackers, and no third-party SDKs watching what you do. Nothing you look at inside Instagram, YouTube, Snapchat or the others is ever read, stored, or sent anywhere.',
       ],
     },
@@ -56,9 +56,9 @@ export const PRIVACY: LegalDocument = {
     {
       heading: 'What stays on your phone',
       points: [
-        'Which parts of which apps Regain closes.',
-        'How many times Regain stepped in, counted per day.',
-        'The last screen Regain recognised while tuning the detector.',
+        'Which parts of which apps Focus Mode closes.',
+        'How many times Focus Mode stepped in, counted per day.',
+        'The last screen Focus Mode recognised while tuning the detector.',
         'Your appearance preference (light, dark, or follow the system).',
         'Your sign-in session, held in the phone’s encrypted storage — the iOS Keychain or Android Keystore, not a plain file.',
       ],
@@ -67,17 +67,17 @@ export const PRIVACY: LegalDocument = {
       ],
     },
     {
-      heading: 'What Regain can and cannot see',
+      heading: 'What Focus Mode can and cannot see',
       body: [
-        'To close the right screen, Regain has to know which screen is open. Android gives an accessibility service the names of the views on screen — technical identifiers like “clips_viewer” — and nothing else is used.',
+        'To close the right screen, Focus Mode has to know which screen is open. Android gives an accessibility service the names of the views on screen — technical identifiers like “clips_viewer” — and nothing else is used.',
         'It never reads the text of a post, a message, a comment, a notification, or a search. It does not take screenshots, does not record keystrokes, and has no ability to change anything inside another app. The only action it can take for you is the one you tap: opening Instagram’s messages, or pressing Back.',
-        'Everything Regain decides is decided on the phone. Those decisions are never uploaded.',
+        'Everything Focus Mode decides is decided on the phone. Those decisions are never uploaded.',
       ],
     },
     {
       heading: 'Why the accessibility permission is needed',
       body: [
-        'Android does not offer any other way for one app to know what another app is showing. The permission is requested only when you switch Regain on, it can be revoked at any time in Settings → Accessibility, and turning Regain off inside the app stops the service asking to look at anything.',
+        'Android does not offer any other way for one app to know what another app is showing. The permission is requested only when you switch Focus Mode on, it can be revoked at any time in Settings → Accessibility, and turning Focus Mode off inside the app stops the service asking to look at anything.',
       ],
     },
     {
@@ -144,7 +144,7 @@ export const TERMS: LegalDocument = {
   id: 'terms',
   title: 'Terms of use',
   summary: 'The agreement between you and Shaikh’s, in plain language.',
-  updated: '23 October 2026',
+  updated: '31 October 2026',
   sections: [
     {
       heading: 'Agreeing to these terms',
@@ -155,14 +155,15 @@ export const TERMS: LegalDocument = {
     {
       heading: 'What Shaikh’s is',
       body: [
-        'Shaikh’s is a personal tool for reducing compulsive use of social apps. Regain closes the endless parts of an app — the Reels feed, Shorts, Spotlight — while leaving messages and anything sent to you working.',
+        'Focus Mode is the feature previously described in this document as Regain; the name changed in version 0.11.0 and nothing about what it does, or what it can see, changed with it.',
+        'Shaikh’s is a personal tool for reducing compulsive use of social apps. Focus Mode closes the endless parts of an app — the Reels feed, Shorts, Spotlight — while leaving messages and anything sent to you working.',
         'It is not a medical device, not therapy, and not a treatment for addiction. It cannot diagnose anything and it does not replace professional help. If these apps are costing you more than they give you, talking to someone is worth more than any setting.',
       ],
     },
     {
       heading: 'What it cannot promise',
       body: [
-        'Blocking depends on recognising a screen inside another company’s app. Those apps change constantly. Regain is built to fail in the safe direction — if it does not recognise a screen, it does nothing — but that also means a new version of Instagram can quietly stop it working until the detector is updated.',
+        'Blocking depends on recognising a screen inside another company’s app. Those apps change constantly. Focus Mode is built to fail in the safe direction — if it does not recognise a screen, it does nothing — but that also means a new version of Instagram can quietly stop it working until the detector is updated.',
         'The app is provided as it is. There is no guarantee that a particular surface will be blocked, on a particular phone, on a particular day.',
       ],
     },
@@ -187,7 +188,7 @@ export const TERMS: LegalDocument = {
     {
       heading: 'The accessibility permission',
       body: [
-        'Regain asks for Android’s accessibility permission, which is powerful and is granted by you, not by us. It is used only to recognise the screens you have asked to close and to show the reminder over them. You can revoke it at any time in your phone’s settings; the app keeps working, it simply stops blocking.',
+        'Focus Mode asks for Android’s accessibility permission, which is powerful and is granted by you, not by us. It is used only to recognise the screens you have asked to close and to show the reminder over them. You can revoke it at any time in your phone’s settings; the app keeps working, it simply stops blocking.',
       ],
     },
     {
@@ -205,7 +206,7 @@ export const TERMS: LegalDocument = {
     {
       heading: 'Liability',
       body: [
-        'To the extent the law allows, the author is not liable for indirect or consequential loss arising from use of the app, including time spent on an app that Regain failed to block. Nothing in these terms limits liability that cannot lawfully be limited.',
+        'To the extent the law allows, the author is not liable for indirect or consequential loss arising from use of the app, including time spent on an app that Focus Mode failed to block. Nothing in these terms limits liability that cannot lawfully be limited.',
       ],
     },
     {

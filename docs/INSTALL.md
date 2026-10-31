@@ -2,7 +2,7 @@
 
 There are two editions, and the difference is one permission.
 
-| Edition | Files | Regain | Installing |
+| Edition | Files | Focus Mode | Installing |
 | --- | --- | --- | --- |
 | **Full** | `shaikhs-arm64.apk`, `shaikhs-32bit.apk`, `shaikhs.apk` | Yes | Google Play Protect blocks it until scanning is switched off once — see below |
 | **Lite** | `shaikhs-arm64-lite.apk`, `shaikhs-32bit-lite.apk` | No | Installs like any app, no security prompt |
@@ -13,7 +13,7 @@ which is also the file the app updates itself from.
 
 ## Why Play Protect blocks the full app
 
-Regain works through an Android **accessibility service** — the only interface
+Focus Mode works through an Android **accessibility service** — the only interface
 that lets an app see which screen another app has open, and therefore the only
 way to step in before Reels or Shorts load.
 
@@ -51,8 +51,8 @@ Nothing to switch off: download `shaikhs-arm64-lite.apk` in Chrome, tap the
 finished download, **Install**. The APK declares no accessibility service, so
 Play Protect has nothing to object to.
 
-Everything except Regain is in it: accounts, PDF Arena's twenty-one tools, and
-the in-app updater. Regain's screen says plainly that this edition leaves it
+Everything except Focus Mode is in it: accounts, PDF Arena's twenty-one tools, and
+the in-app updater. Focus Mode's screen says plainly that this edition leaves it
 out, and the release notes say how to get the full app.
 
 ## Once installed

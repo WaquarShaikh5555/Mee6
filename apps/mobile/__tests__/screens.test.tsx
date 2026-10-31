@@ -58,7 +58,7 @@ jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { 
 jest.mock('expo-system-ui', () => ({ setBackgroundColorAsync: jest.fn().mockResolvedValue(undefined) }));
 
 import { AuthProvider } from '@/auth/AuthProvider';
-import { RegainProvider } from '@/regain/RegainProvider';
+import { FocusProvider } from '@/focus/FocusProvider';
 import { demoAuthService } from '@/auth/demoAuthService';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 
@@ -76,7 +76,7 @@ function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RegainProvider>{children}</RegainProvider>
+        <FocusProvider>{children}</FocusProvider>
       </AuthProvider>
     </ThemeProvider>
   );
@@ -214,12 +214,12 @@ describe('auth screens', () => {
 });
 
 describe('app screens', () => {
-  it('home greets the person and shows what Regain is doing today', async () => {
+  it('home greets the person and shows what Focus Mode is doing today', async () => {
     await seedSession();
     await renderScreen(<HomeScreen />);
 
     expect(await screen.findByText('Waquar', undefined, { timeout: 3000 })).toBeTruthy();
-    expect(screen.getByText('Regain')).toBeTruthy();
+    expect(screen.getByText('Focus Mode')).toBeTruthy();
     expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getByText('Counted on this phone. Nothing is uploaded.')).toBeTruthy();
     expect(screen.getByText('Signed in as waquar@example.com')).toBeTruthy();
@@ -229,12 +229,12 @@ describe('app screens', () => {
     expect(screen.queryByText(/features come next/i)).toBeNull();
   });
 
-  it('home leads with Regain and opens it', async () => {
+  it('home leads with Focus Mode and opens it', async () => {
     await seedSession();
     await renderScreen(<HomeScreen />);
 
-    await fireEvent.press(await screen.findByLabelText('Open Regain'));
-    expect(mockPush).toHaveBeenCalledWith('/regain');
+    await fireEvent.press(await screen.findByLabelText('Open Focus Mode'));
+    expect(mockPush).toHaveBeenCalledWith('/focus');
   });
 
   it('home reaches settings from the header', async () => {

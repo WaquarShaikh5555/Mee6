@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-  <string name="regain_service_label">Regain</string>
-  <string name="regain_service_description">Regain closes the parts of social apps you asked it to close — Reels, Shorts, Spotlight — while leaving messages working. It reads which screen is open, never what is on it, and nothing leaves your phone.</string>
-</resources>

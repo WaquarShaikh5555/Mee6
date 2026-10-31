@@ -85,7 +85,7 @@ and costs nothing; only the app's next build needs the new value.
 
 ---
 
-## What Regain is trusted with
+## What Focus Mode is trusted with
 
 - The accessibility service reads **view ids and content descriptions**. It never reads
   message text, post text, passwords, or keyboard input, and it cannot perform actions in
@@ -100,7 +100,7 @@ and costs nothing; only the app's next build needs the new value.
 
 Everything goes over HTTPS to `*.supabase.co`. There is no other server, no analytics
 endpoint, and no third-party SDK that could phone home. The app makes no network request at
-all while Regain is doing its job.
+all while Focus Mode is doing its job.
 
 ---
 

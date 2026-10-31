@@ -49,7 +49,7 @@ const mockAuth = {
 
 jest.mock('@/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
 
-const mockRegain = {
+const mockFocus = {
   isReady: true,
   enabled: true,
   state: { version: 1, enabled: true, rules: { instagram: ['reels'] }, interventions: {} },
@@ -64,7 +64,7 @@ const mockRegain = {
   resetRules: jest.fn(),
 };
 
-jest.mock('@/regain/RegainProvider', () => ({ useRegain: () => mockRegain }));
+jest.mock('@/focus/FocusProvider', () => ({ useFocus: () => mockFocus }));
 
 jest.mock('expo-constants', () => ({
   __esModule: true,

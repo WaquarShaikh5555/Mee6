@@ -50,10 +50,10 @@ edition (`arm64-v8a`, `arm64-v8a-lite`, …), so:
 - An in-app update downloads the package built for that phone's CPU — around
   half the bytes of the universal one — and falls back to the universal package
   if the feed has no entry for it.
-- A **lite** install only ever takes a lite package. The app asks Regain which
+- A **lite** install only ever takes a lite package. The app asks Focus Mode which
   edition it is (`not-in-this-build` means lite) and, if the feed has no lite
   package for that CPU, offers no update at all rather than quietly installing
-  the edition with Regain in it.
+  the edition with Focus Mode in it.
 
 ## When Android says the package appears to be invalid
 

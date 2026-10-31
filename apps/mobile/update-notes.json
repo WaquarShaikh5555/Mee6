@@ -1,13 +1,18 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.11.0": [
+    "Regain is now Focus Mode. Same feature, same rules, and your settings come across on their own.",
+    "Android ties the accessibility permission to the feature's name, so turn Focus Mode on once more in Settings → Accessibility.",
+    "Real ads are live, and they only ever appear in PDF Arena when you choose one."
+  ],
   "0.10.0": [
     "11 extra PDF tools — protect, watermark, compare, repair — open for 48 hours after one short ad.",
     "Everyday tools stay free: merge, split, sign, rotate, compress and the rest never ask.",
-    "No ads in Regain, and no banners anywhere. One ad, only when you choose it."
+    "No ads in Focus Mode, and no banners anywhere. One ad, only when you choose it."
   ],
   "0.9.5": [
     "Signing: the ink shows on the page while you place it, in a frame you can drag.",
-    "The lite edition now updates to the lite edition — never back to the build with Regain.",
+    "The lite edition now updates to the lite edition — never back to the build with Focus Mode.",
     "PDF Arena unchanged otherwise: 21 tools, results saved to Downloads, one-tap updates."
   ],
   "0.9.4": [
@@ -16,8 +21,8 @@
     "Everything else is unchanged: 21 PDF tools, results saved to Downloads, one-tap updates."
   ],
   "0.9.3": [
-    "A \"lite\" edition of the app now installs with no security prompt at all — it leaves Regain out.",
-    "The full app still has Regain; Play Protect blocks it until you switch scanning off once.",
+    "A \"lite\" edition of the app now installs with no security prompt at all — it leaves Focus Mode out.",
+    "The full app still has Focus Mode; Play Protect blocks it until you switch scanning off once.",
     "Updates: the prompt picks the package built for your phone and checks it arrived intact."
   ],
   "0.9.2": [

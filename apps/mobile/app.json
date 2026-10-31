@@ -2,7 +2,7 @@
   "expo": {
     "name": "Shaikh's",
     "slug": "shaikhs",
-    "version": "0.10.0",
+    "version": "0.11.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "shaikhs",
@@ -46,7 +46,7 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "androidAppId": "ca-app-pub-8602760833611299~1068854218",
           "delayAppMeasurementInit": false,
           "optimizeInitialization": true
         }

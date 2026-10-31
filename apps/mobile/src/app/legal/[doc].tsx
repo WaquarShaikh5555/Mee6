@@ -104,7 +104,7 @@ export default function LegalScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
           <Badge label="On device" tone="brass" />
           <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
-            Regain’s rules and counts never leave your phone.
+            Focus Mode’s rules and counts never leave your phone.
           </Text>
         </View>
       </View>

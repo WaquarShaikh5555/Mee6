@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { useRegain } from '@/regain/RegainProvider';
-import { getEnforcementStatus, getLastSighting, type EnforcementStatus, type Sighting } from '@/regain/enforcement';
-import { REGAIN_APPS } from '@/regain/catalog';
-import { blockedSectionsFor } from '@/regain/store';
+import { useFocus } from '@/focus/FocusProvider';
+import { getEnforcementStatus, getLastSighting, type EnforcementStatus, type Sighting } from '@/focus/enforcement';
+import { FOCUS_APPS } from '@/focus/catalog';
+import { blockedSectionsFor } from '@/focus/store';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -23,12 +23,12 @@ import { useTheme } from '@/theme/ThemeProvider';
  * Reached only when the database says this account is admin — a column the app
  * has no permission to write. Everything here is read-only or locally
  * reversible: diagnostics people can send when something does not work, and a
- * way to see exactly what Regain thinks it is looking at.
+ * way to see exactly what Focus Mode thinks it is looking at.
  */
 export default function DeveloperScreen() {
   const theme = useTheme();
   const { user } = useAuth();
-  const { state, enabled, blockedSectionCount, todayCount, resetRules } = useRegain();
+  const { state, enabled, blockedSectionCount, todayCount, resetRules } = useFocus();
 
   const [enforcement, setEnforcement] = useState<EnforcementStatus | null>(null);
   const [sighting, setSighting] = useState<Sighting | null>(null);
@@ -58,7 +58,7 @@ export default function DeveloperScreen() {
     );
   }
 
-  const rules = REGAIN_APPS.map((app) => ({
+  const rules = FOCUS_APPS.map((app) => ({
     app: app.name,
     sections: blockedSectionsFor(state, app),
   })).filter((entry) => entry.sections.length > 0);
@@ -67,7 +67,7 @@ export default function DeveloperScreen() {
   // It is the difference between guessing at another company's view names and
   // reading them.
   const reportUrl = `https://github.com/WaquarShaikh5555/Mee6/issues/new?title=${encodeURIComponent(
-    'Regain did not block a screen',
+    'Focus Mode did not block a screen',
   )}&body=${encodeURIComponent(
     [
       'What happened:',
@@ -85,7 +85,7 @@ export default function DeveloperScreen() {
     `Shaikh's ${Constants.expoConfig?.version ?? '?'} · ${Platform.OS} ${Platform.Version}`,
     `account: ${user.email} · owner`,
     `enforcement: ${enforcement?.availability ?? 'unknown'}`,
-    `regain: ${enabled ? 'on' : 'off'} · ${blockedSectionCount} sections · ${todayCount} today`,
+    `focus: ${enabled ? 'on' : 'off'} · ${blockedSectionCount} sections · ${todayCount} today`,
     `last seen: ${sighting?.summary || 'nothing yet'}`,
     `service error: ${sighting?.error || 'none'}`,
     `rules: ${JSON.stringify(Object.fromEntries(rules.map((r) => [r.app, r.sections])))}`,
@@ -113,7 +113,7 @@ export default function DeveloperScreen() {
         <Row label="Platform" value={`${Platform.OS} ${String(Platform.Version)}`} />
         <Divider />
         <Row
-          label="Regain status"
+          label="Focus Mode status"
           value={
             enforcement?.availability === 'ready'
               ? 'Service running'
@@ -126,14 +126,14 @@ export default function DeveloperScreen() {
 
       <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
         <Text variant="subhead" tone="secondary">
-          What Regain last saw
+          What Focus Mode last saw
         </Text>
         <Card style={{ gap: theme.space.sm }}>
           <Text variant="callout">{sighting?.summary || 'Nothing yet.'}</Text>
           <Text variant="caption" tone="tertiary">
             {sighting && sighting.at > 0
               ? `Recorded ${new Date(sighting.at).toLocaleString()}`
-              : 'Open one of the apps with Regain on, then come back.'}
+              : 'Open one of the apps with Focus Mode on, then come back.'}
           </Text>
           <Text variant="caption" tone="tertiary">
             This is how the recogniser is corrected for a new version of an app: it shows the
@@ -178,7 +178,7 @@ export default function DeveloperScreen() {
           onPress={() => void refresh()}
         />
         <Button
-          label="Report what Regain saw"
+          label="Report what Focus Mode saw"
           onPress={() => void Linking.openURL(reportUrl)}
         />
         <Button

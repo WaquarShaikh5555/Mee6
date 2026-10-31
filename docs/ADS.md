@@ -30,23 +30,23 @@ of attention on twice a month.
 `__tests__/ads.test.tsx` enforces this: `MUST_STAY_FREE` in `src/ads/pro.ts` names
 the verbs, and the test fails if any of them ever gains a `pro: true`.
 
-## Why there are no ads in Regain
+## Why there are no ads in Focus Mode
 
 This was a deliberate decision, not an omission.
 
-1. **Policy.** Regain works as an accessibility overlay drawn *over other apps*.
+1. **Policy.** Focus Mode works as an accessibility overlay drawn *over other apps*.
    An ad rendered there is an ad on someone else's screen, next to someone else's
    buttons — the classic recipe for accidental taps, which AdMob counts as
    invalid traffic and can terminate an account for.
-2. **Product.** Regain exists to reduce compulsive phone use. Selling attention
+2. **Product.** Focus Mode exists to reduce compulsive phone use. Selling attention
    inside the app that helps you use your phone less is not a trade-off; it is
    the opposite of the feature.
-3. **Money.** Regain is used for seconds at a time, mostly to flip a switch. It
+3. **Money.** Focus Mode is used for seconds at a time, mostly to flip a switch. It
    would earn a rounding error and cost the one thing the app actually has:
    being trusted.
 
-If Regain ever gets monetised, it should be an optional "support" card on the
-Regain *overview* — never the shield, never the blocked screen, never while
+If Focus Mode ever gets monetised, it should be an optional "support" card on the
+Focus Mode *overview* — never the shield, never the blocked screen, never while
 another app is on screen.
 
 ## Why rewarded only
@@ -75,7 +75,7 @@ Non-personalised ads only. That means no advertising-ID consent flow, no UMP
 dialogue, and nothing about the person collected for targeting. It pays less per
 impression and is the right trade for a document tool.
 
-## Swapping the test IDs for real ones
+## The live IDs, and how to change them
 
 `src/ads/config.ts` holds both values, and `app.json` holds the app ID again (the
 Expo config plugin writes it into the Android manifest). They must agree or the
@@ -83,12 +83,17 @@ app crashes at launch with *Invalid application ID* — before any of this code
 runs — so a test pins them together.
 
 ```
-AD_APP_ID        ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY     (AdMob → App settings)
-REWARDED_UNIT_ID ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ     (AdMob → Ad units → Rewarded)
+AD_APP_ID        ca-app-pub-8602760833611299~1068854218   (AdMob → App settings)
+REWARDED_UNIT_ID ca-app-pub-8602760833611299/7902302989   (AdMob → Ad units → Rewarded)
 ```
 
-Change both places, commit, and the CI build publishes it. While the sample IDs
-are in place the card says "Test ad", so a build can never quietly earn nothing.
+These are live from 0.11.0. They are not secrets — every APK carries them and
+anyone can read them out of the file.
+
+To move to a different AdMob app, change both places and `androidAppId` in
+`app.json` in the same commit. If the Google sample IDs ever end up in a build
+again, `USING_TEST_ADS` turns on and the card says "Test ad", so a build cannot
+quietly ship earning nothing.
 
 ## What to expect from revenue
 

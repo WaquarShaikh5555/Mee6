@@ -3,8 +3,8 @@
 A cross-platform app for iOS and Android, built with Expo (React Native) and TypeScript.
 
 **Current state: first feature shipped.** Design foundation, navigation, and real accounts
-are in place, and **Regain** — the feature that closes the compulsive parts of social apps
-while leaving messages open — is built and tested. See [docs/REGAIN.md](../../docs/REGAIN.md).
+are in place, and **Focus Mode** — the feature that closes the compulsive parts of social apps
+while leaving messages open — is built and tested. See [docs/FOCUS.md](../../docs/FOCUS.md).
 
 - **Stack:** Expo SDK 58 · React Native 0.88 · React 19 · TypeScript 6 (strict) · Expo Router
 - **Runs on:** iOS, Android, and web from one codebase
@@ -142,14 +142,14 @@ UI depends on: which SDK calls happen, error-code translation, and how the store
 behaves when it is revoked, refreshed, or expired. `__tests__/screens.test.tsx` renders every
 screen inside the real providers.
 
-## Regain
+## Focus Mode
 
 The first feature. A card on the dashboard opens it; per-app switches close the parts that
 consume you (Reels, Shorts, Spotlight, servers) and leave the parts that connect you
 (DMs, a reel a friend sent, long videos) untouched.
 
 Blocking a section inside another company's app needs a native build — see
-[docs/REGAIN.md](../../docs/REGAIN.md) for exactly what works on Android, what Apple
+[docs/FOCUS.md](../../docs/FOCUS.md) for exactly what works on Android, what Apple
 does not allow on iOS, and why. Everything else — rules, screens, persistence, and the
 "Make yourself better." block screen — is built and covered by 29 tests.
 

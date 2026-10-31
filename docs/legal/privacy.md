@@ -2,11 +2,13 @@
 
 What Shaikh’s keeps, where it goes, and the parts that never leave your phone.
 
-*Last updated 23 October 2026.*
+*Last updated 31 October 2026.*
+
+*Focus Mode was called Regain before version 0.11.0. The name changed; what the feature does, and what it can see, did not.*
 
 ## The short version
 
-Shaikh’s has an account, because you asked for one that works across devices. Everything Regain does stays on your phone.
+Shaikh’s has an account, because you asked for one that works across devices. Everything Focus Mode does stays on your phone.
 
 There are no analytics, no advertising, no trackers, and no third-party SDKs watching what you do. Nothing you look at inside Instagram, YouTube, Snapchat or the others is ever read, stored, or sent anywhere.
 
@@ -23,23 +25,23 @@ That is the complete list. There is no profile photo, no phone number, no contac
 
 Uninstalling the app removes all of it. The only thing that survives is your account itself.
 
-- Which parts of which apps Regain closes.
-- How many times Regain stepped in, counted per day.
-- The last screen Regain recognised while tuning the detector.
+- Which parts of which apps Focus Mode closes.
+- How many times Focus Mode stepped in, counted per day.
+- The last screen Focus Mode recognised while tuning the detector.
 - Your appearance preference (light, dark, or follow the system).
 - Your sign-in session, held in the phone’s encrypted storage — the iOS Keychain or Android Keystore, not a plain file.
 
-## What Regain can and cannot see
+## What Focus Mode can and cannot see
 
-To close the right screen, Regain has to know which screen is open. Android gives an accessibility service the names of the views on screen — technical identifiers like “clips_viewer” — and nothing else is used.
+To close the right screen, Focus Mode has to know which screen is open. Android gives an accessibility service the names of the views on screen — technical identifiers like “clips_viewer” — and nothing else is used.
 
 It never reads the text of a post, a message, a comment, a notification, or a search. It does not take screenshots, does not record keystrokes, and has no ability to change anything inside another app. The only action it can take for you is the one you tap: opening Instagram’s messages, or pressing Back.
 
-Everything Regain decides is decided on the phone. Those decisions are never uploaded.
+Everything Focus Mode decides is decided on the phone. Those decisions are never uploaded.
 
 ## Why the accessibility permission is needed
 
-Android does not offer any other way for one app to know what another app is showing. The permission is requested only when you switch Regain on, it can be revoked at any time in Settings → Accessibility, and turning Regain off inside the app stops the service asking to look at anything.
+Android does not offer any other way for one app to know what another app is showing. The permission is requested only when you switch Focus Mode on, it can be revoked at any time in Settings → Accessibility, and turning Focus Mode off inside the app stops the service asking to look at anything.
 
 ## Who else is involved
 

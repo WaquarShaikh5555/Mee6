@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { useRegain } from '@/regain/RegainProvider';
+import { useFocus } from '@/focus/FocusProvider';
 import { Badge } from '@/ui/Badge';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
@@ -22,7 +22,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user, isDemoMode } = useAuth();
-  const { enabled: regainEnabled, blockedSectionCount, todayCount } = useRegain();
+  const { enabled: focusEnabled, blockedSectionCount, todayCount } = useFocus();
 
   return (
     <Screen gutter="lg">
@@ -60,29 +60,29 @@ export default function HomeScreen() {
         </Text>
         <Text variant="title1">{user?.displayName ?? 'There'}</Text>
         <Text variant="body" tone="secondary">
-          {regainEnabled
-            ? 'Regain is watching the parts you closed. Everything else stays where it was.'
+          {focusEnabled
+            ? 'Focus Mode is watching the parts you closed. Everything else stays where it was.'
             : 'One switch closes the endless parts of Instagram, YouTube and the rest.'}
         </Text>
       </View>
 
-      {/* Regain is the first real feature, so it leads the dashboard rather
+      {/* Focus Mode is the first real feature, so it leads the dashboard rather
           than sitting in a list. It states its own state at a glance. */}
       <Pressable
-        onPress={() => router.push('/regain')}
+        onPress={() => router.push('/focus')}
         accessibilityRole="button"
         accessibilityLabel={
-          regainEnabled
-            ? `Regain is on, ${blockedSectionCount} sections blocked. Open Regain.`
-            : 'Open Regain'
+          focusEnabled
+            ? `Focus Mode is on, ${blockedSectionCount} sections blocked. Open Focus Mode.`
+            : 'Open Focus Mode'
         }
         style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
       >
         <Card
           style={{
             gap: theme.space.md,
-            backgroundColor: regainEnabled ? theme.colors.accentSubtle : theme.colors.surface,
-            borderColor: regainEnabled ? theme.colors.accentBorder : theme.colors.separator,
+            backgroundColor: focusEnabled ? theme.colors.accentSubtle : theme.colors.surface,
+            borderColor: focusEnabled ? theme.colors.accentBorder : theme.colors.separator,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
@@ -93,29 +93,29 @@ export default function HomeScreen() {
                 borderRadius: theme.radius.full,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: regainEnabled ? theme.colors.accent : theme.colors.surfaceSunken,
+                backgroundColor: focusEnabled ? theme.colors.accent : theme.colors.surfaceSunken,
               }}
             >
               <Ionicons
-                name={regainEnabled ? 'shield-checkmark' : 'shield-outline'}
+                name={focusEnabled ? 'shield-checkmark' : 'shield-outline'}
                 size={22}
-                color={regainEnabled ? theme.colors.onAccent : theme.colors.textTertiary}
+                color={focusEnabled ? theme.colors.onAccent : theme.colors.textTertiary}
               />
             </View>
 
             <View style={{ flex: 1, gap: 2 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
-                <Text variant="headline" tone={regainEnabled ? 'onAccentSubtle' : 'primary'}>
-                  Regain
+                <Text variant="headline" tone={focusEnabled ? 'onAccentSubtle' : 'primary'}>
+                  Focus Mode
                 </Text>
-                {regainEnabled ? <Badge label="On" tone="accent" /> : null}
+                {focusEnabled ? <Badge label="On" tone="accent" /> : null}
               </View>
               <Text
                 variant="footnote"
-                tone={regainEnabled ? 'onAccentSubtle' : 'tertiary'}
+                tone={focusEnabled ? 'onAccentSubtle' : 'tertiary'}
                 numberOfLines={2}
               >
-                {regainEnabled
+                {focusEnabled
                   ? `${blockedSectionCount} ${blockedSectionCount === 1 ? 'section' : 'sections'} blocked${todayCount > 0 ? ` · ${todayCount} today` : ''}`
                   : 'Keep the DMs. Lose the Reels scroll.'}
               </Text>
@@ -124,13 +124,13 @@ export default function HomeScreen() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={regainEnabled ? theme.colors.onAccentSubtle : theme.colors.textTertiary}
+              color={focusEnabled ? theme.colors.onAccentSubtle : theme.colors.textTertiary}
             />
           </View>
         </Card>
       </Pressable>
 
-      {/* PDF Arena sits beside Regain, not under it: both are the reason the
+      {/* PDF Arena sits beside Focus Mode, not under it: both are the reason the
           app exists, and a dashboard with one card looks like a demo. */}
       <Pressable
         onPress={() => router.push('/pdf')}

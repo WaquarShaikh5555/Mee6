@@ -6,33 +6,35 @@
  * they do, because that failure happens before a single line of this app runs
  * and there is no way to show an error for it.
  *
- * The values below are Google's **official test units**. They serve real test
- * ads to any device and pay nothing — which is exactly right until the real
- * ones are dropped in. Swapping them is two lines here plus one in `app.json`.
+ * These are the live units from the Shaikh's account. They are not secrets:
+ * every copy of the app carries them, and anyone can read them out of the APK.
  *
- * Real IDs look like:
- *   app id      ca-app-pub-1234567890123456~1234567890
- *   rewarded    ca-app-pub-1234567890123456/0987654321
- *
- * They are not secrets: every copy of the app carries them.
+ * If the app is ever moved to a different AdMob app (or a fresh account for a
+ * Play Store listing), replace both of these and `androidAppId` in `app.json`
+ * in the same commit. Leaving the Google sample ids here would serve test ads
+ * and earn exactly nothing; `USING_TEST_ADS` below makes that state loud on the
+ * unlock card instead of silently mysterious.
  */
 
-/** Google's sample app id. Replace with the real one from AdMob → App settings. */
-export const AD_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
+/** AdMob → Apps → Shaikh's → App settings. */
+export const AD_APP_ID: string = 'ca-app-pub-8602760833611299~1068854218';
 
-/** Google's sample rewarded unit. Replace with AdMob → Ad units → Rewarded. */
-export const REWARDED_UNIT_ID = 'ca-app-pub-3940256099942544/5224354917';
+/** AdMob → Ad units → the rewarded unit. Only rewarded format, by design. */
+export const REWARDED_UNIT_ID: string = 'ca-app-pub-8602760833611299/7902302989';
+
+/** Google's sample units, kept only to recognise them. */
+const SAMPLE_APP_ID: string = 'ca-app-pub-3940256099942544~3347511713';
+const SAMPLE_REWARDED_UNIT_ID: string = 'ca-app-pub-3940256099942544/5224354917';
 
 /**
- * True while the sample units are in use.
+ * True only while the sample units are in use.
  *
  * The prompt says "test ad" in that case, so nobody is ever misled about what
- * they are looking at, and a build that ships without real IDs is obvious
- * rather than a mystery about missing revenue.
+ * they are looking at, and a build that ships with samples is obvious rather
+ * than a mystery about missing revenue.
  */
 export const USING_TEST_ADS =
-  AD_APP_ID === 'ca-app-pub-3940256099942544~3347511713' ||
-  REWARDED_UNIT_ID === 'ca-app-pub-3940256099942544/5224354917';
+  AD_APP_ID === SAMPLE_APP_ID || REWARDED_UNIT_ID === SAMPLE_REWARDED_UNIT_ID;
 
 /** How long one ad buys. The single number that decides generosity. */
 export const UNLOCK_HOURS = 48;

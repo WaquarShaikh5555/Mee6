@@ -14,7 +14,7 @@ Two things live here:
 Expo + React Native + TypeScript on the client. Accounts and data live in Supabase
 (hosted PostgreSQL) — no server to deploy, no card required.
 
-**Regain.** A dashboard card opens a screen that closes the compulsive parts of social apps —
+**Focus Mode.** A dashboard card opens a screen that closes the compulsive parts of social apps —
 Reels, Shorts, Spotlight — while leaving messages and anything someone chose to send you open.
 
 **PDF Arena.** Twenty-one tools — merge, split, delete, rearrange, rotate, sign, watermark, page
@@ -38,16 +38,16 @@ on Update. How the feed, the download and the installer work is in [docs/UPDATES
 **Install it on an Android phone:** [download `shaikhs-arm64.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-arm64.apk)
 with Chrome — the 64-bit package, which is what almost every phone made since 2019
 needs, and about half the size of the universal one. Google Play Protect refuses to
-install sideloaded apps that declare an accessibility service (Regain uses one), so
+install sideloaded apps that declare an accessibility service (Focus Mode uses one), so
 either switch its scanning off once, or take `shaikhs-arm64-lite.apk`, which leaves
-Regain out and installs with no prompt — both routes are in
+Focus Mode out and installs with no prompt — both routes are in
 [docs/INSTALL.md](docs/INSTALL.md). Older 32-bit phones take
 [`shaikhs-32bit.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-32bit.apk),
 and [`shaikhs.apk`](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk)
 runs on anything. The release notes list each file's exact size and SHA-256, so a
-download that was cut short is visible rather than mysterious. Open it, allow installing from this source, then open Regain and
+download that was cut short is visible rather than mysterious. Open it, allow installing from this source, then open Focus Mode and
 allow it in Settings → Accessibility. Built by GitHub Actions on every push
-([how it works](docs/REGAIN.md)).
+([how it works](docs/FOCUS.md)).
 
 ```bash
 cd apps/mobile

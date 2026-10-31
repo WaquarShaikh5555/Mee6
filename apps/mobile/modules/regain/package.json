@@ -1,7 +1,0 @@
-{
-  "name": "regain",
-  "version": "0.1.0",
-  "description": "Regain — closes the compulsive surfaces of social apps on Android",
-  "main": "index.ts",
-  "private": true
-}

@@ -9,7 +9,7 @@ import {
   isUpdaterAvailable,
   openInstallSettings,
 } from './updater';
-import { getEnforcementStatus } from '@/regain/enforcement';
+import { getEnforcementStatus } from '@/focus/enforcement';
 
 import {
   UPDATE_FEED,
@@ -46,7 +46,7 @@ const FEED_TIMEOUT_MS = 8_000;
 /**
  * Full or lite, asked once per check.
  *
- * The lite build has no accessibility service, and Regain says exactly that.
+ * The lite build has no accessibility service, and Focus Mode says exactly that.
  * Anything else — including a module that cannot answer — is treated as the
  * full build, which is the edition that has always been published.
  */

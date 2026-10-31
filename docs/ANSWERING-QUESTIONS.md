@@ -39,7 +39,7 @@ keeps pushing. Change the wording to sound like you — it works better in your 
 >
 > 1. It uses Android's **accessibility service**. This is the single biggest red flag a
 >    scanner can see, because banking trojans are built on it. But accessibility is also the
->    *only* way any app on Android can know what another app is currently showing. Regain
+>    *only* way any app on Android can know what another app is currently showing. Focus Mode
 >    can't exist without it.
 > 2. It's **signed with a debug certificate**. That key is public — it ships with every
 >    React Native project on earth. Scanners treat that as low-trust by default.
@@ -97,9 +97,9 @@ Send them this:
    Everything it can ask for is listed there. There is no camera, microphone, contacts, SMS,
    or location entry.
 2. **Read the code.** The Android side is about 400 lines in
-   `apps/mobile/modules/regain/android/`. Start with `RegainAccessibilityService.kt` — it's
+   `apps/mobile/modules/focus/android/`. Start with `FocusAccessibilityService.kt` — it's
    the only file that can see another app.
-3. **Watch it work.** Open Instagram Reels with Regain on. A full-screen message covers it.
+3. **Watch it work.** Open Instagram Reels with Focus Mode on. A full-screen message covers it.
    Malware hides; this is designed to be impossible to miss.
 
 ---

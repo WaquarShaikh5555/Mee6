@@ -66,10 +66,10 @@ function parsePackage(raw: unknown): UpdatePackage | null {
 /**
  * Which edition this build is.
  *
- * The lite edition has no accessibility service, so Regain reports it is not in
+ * The lite edition has no accessibility service, so Focus Mode reports it is not in
  * this build — that is the one cheap, local fact that tells the two apart. It
  * matters for updates: a lite install must never be handed the full package,
- * because that would quietly give someone Regain they did not ask for.
+ * because that would quietly give someone Focus Mode they did not ask for.
  */
 export type Edition = 'full' | 'lite';
 
