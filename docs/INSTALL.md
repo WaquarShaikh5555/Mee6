@@ -47,6 +47,32 @@ Nothing in this repository can change that while Focus Mode exists: every
 section-level blocker on Android needs the same permission and meets the same
 wall.
 
+## "App not installed" — the silent version of the same block
+
+**App not installed** is a different message from **App blocked to protect your
+device**, and it is the one that tells you nothing. It means the package was read
+correctly and then *refused* — not that the file is broken. In order of how often
+it happens:
+
+| Cause | How to tell | Fix |
+| --- | --- | --- |
+| Play Protect's enhanced fraud protection, failing without a dialog | An older Shaikh's is already on the phone and updating it fails; nothing about the APK is wrong | The Shizuku route below |
+| **Samsung Auto Blocker** | Samsung phone, One UI 6.1 or newer | Settings → Security and privacy → **Auto Blocker** → off, install, on again |
+| Xiaomi / Redmi / POCO install guard | Security app asks, or nothing happens | Security app → Settings → **Scan apps before install** off; Developer options → **Install via USB** on |
+| A different copy of the same package already installed | You once installed a build from somewhere else, or a build signed with another key | Settings → Apps → **Shaikh's** → **Uninstall**, then install this one (sign in again; documents stay in Downloads) |
+| A cut-short download | File size in Downloads does not match the one on the release page, byte for byte | Download again on Wi-Fi |
+| Less than ~200 MB free | Storage setting shows it | Free space |
+
+The first row is the one that applies here: the block is enforced server-side and
+survives switching *Scan apps with Play Protect* off, it simply stops showing a
+dialog and fails the install instead.
+
+**To see the real reason**, install through an installer that prints Android's
+error code instead of swallowing it — **InstallerX Revived** or
+**InstallWithOptions** (both in the Shizuku steps below) show something like
+`INSTALL_FAILED_VERIFICATION_FAILURE` or `INSTALL_FAILED_UPDATE_INCOMPATIBLE`,
+which says exactly which row of the table you are in.
+
 ## Three ways in
 
 ### 1. Shizuku — installs through Android's own developer channel
