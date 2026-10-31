@@ -7,7 +7,9 @@
  * bundle outright. Splitting the load keeps `rewarded.ts` platform-agnostic.
  *
  * Everything is still optional: a build where linking failed must report "no
- * ads", not crash on launch.
+ * ads", not crash on launch. That is not hypothetical — from 0.11.1 the package
+ * is installed but deliberately unlinked (see `react-native.config.js`), and
+ * this `catch` is what makes that a quiet "no ads" instead of a bundle error.
  */
 
 import type { AdsModule } from './sdk.types';

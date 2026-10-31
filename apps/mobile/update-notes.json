@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.11.1": [
+    "Fixes the app closing the moment you opened it. The ad software is switched off in this build while that is sorted.",
+    "Everything else stays: Focus Mode, all 21 PDF tools, and nothing is locked while ads are paused.",
+    "Your settings carry across — nothing to re-enter, nothing to reinstall twice."
+  ],
   "0.11.0": [
     "Regain is now Focus Mode. Same feature, same rules, and your settings come across on their own.",
     "Android ties the accessibility permission to the feature's name, so turn Focus Mode on once more in Settings → Accessibility.",

@@ -360,3 +360,28 @@ describe('the platform shim', () => {
     expect(web.loadAds()).toBeNull();
   });
 });
+
+describe('the pause', () => {
+  // The ads SDK is installed but deliberately not linked into Android. It was
+  // the only new native code between the last build that launched and the
+  // first one that did not, so it leaves the build until the cause is found.
+  //
+  // This test is the guard on that decision: re-linking it fails here, which
+  // forces the person doing it to read this and delete the test on purpose.
+  it('keeps the ads SDK out of the Android build', () => {
+    const config = require('../react-native.config.js') as {
+      dependencies: Record<string, { platforms?: { android?: null; ios?: null } }>;
+    };
+
+    const entry = config.dependencies['react-native-google-mobile-ads'];
+    expect(entry).toBeTruthy();
+    expect(entry.platforms?.android).toBeNull();
+    expect(entry.platforms?.ios).toBeNull();
+  });
+
+  it('still resolves in Metro, so the require stays caught rather than fatal', () => {
+    // Uninstalling would make Metro fail to resolve the require at bundle
+    // time. Being installed and merely unlinked keeps `sdk.ts` a try/catch.
+    expect(() => require.resolve('react-native-google-mobile-ads')).not.toThrow();
+  });
+});

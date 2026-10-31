@@ -126,3 +126,32 @@ So the package is loaded in exactly one place, behind a platform shim:
 behaviour for a browser preview: a gate with nothing behind it would be a lie.
 `__tests__/ads.test.tsx` pins both halves of the shim, so the web bundle cannot
 regress into importing the native package again.
+
+## Paused: the SDK is installed but not linked (0.11.1)
+
+`react-native-google-mobile-ads` arrived in 0.10.0 and the first build that
+carried it closed itself the moment it was tapped on. It is the only new native
+code between a build that launched and one that did not, so it has been taken
+out of the Android build — not deleted — by `react-native.config.js`:
+
+```js
+dependencies: {
+  'react-native-google-mobile-ads': { platforms: { android: null, ios: null } },
+}
+```
+
+What that changes at runtime: `require` inside `sdk.ts` throws because the
+TurboModule is not registered, `adsAvailable()` returns false, the unlock card
+never renders, and every PDF tool is free. That is the same path the web build
+and Expo Go already take, so nothing else needed changing.
+
+Why not uninstall: Metro resolves every `require` at bundle time. A missing
+package is a build failure, not a caught exception, so `sdk.ts` would have to
+lose its loader too — and re-adding ads would then be a rewrite instead of a
+one-line revert.
+
+To switch ads back on: delete the `platforms` key, delete the guard test in
+`__tests__/ads.test.tsx` (it is deliberately in the way), and ship. If the
+launch crash returns, the SDK — not the config — is the cause, and it needs a
+different integration or a library fix.
+
