@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.11.2": [
+    "Opening PDF Arena no longer closes the app. The ad software is fully switched off until that is fixed.",
+    "Every tool is free while ads are paused — nothing is locked, nothing asks for anything.",
+    "Focus Mode, updates and your settings are untouched."
+  ],
   "0.11.1": [
     "Fixes the app closing the moment you opened it. The ad software is switched off in this build while that is sorted.",
     "Everything else stays: Focus Mode, all 21 PDF tools, and nothing is locked while ads are paused.",

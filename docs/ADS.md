@@ -127,31 +127,52 @@ behaviour for a browser preview: a gate with nothing behind it would be a lie.
 `__tests__/ads.test.tsx` pins both halves of the shim, so the web bundle cannot
 regress into importing the native package again.
 
-## Paused: the SDK is installed but not linked (0.11.1)
+## Paused: the SDK is not loaded and not linked (0.11.2)
 
-`react-native-google-mobile-ads` arrived in 0.10.0 and the first build that
-carried it closed itself the moment it was tapped on. It is the only new native
-code between a build that launched and one that did not, so it has been taken
-out of the Android build — not deleted — by `react-native.config.js`:
+`react-native-google-mobile-ads` arrived in 0.10.0 and the app closed itself on
+launch. 0.11.1 took the package out of the **native** build and the app opened —
+but tapping **PDF Arena** still killed it. That screen is the first thing that
+*imports* the ad package, and importing it registers a native view; with the
+native side unlinked, that registration is not a JS exception on a device, it is
+a process death. A `try`/`catch` cannot see it.
+
+So there are now two layers, and the JS one is the one that matters:
+
+```ts
+// src/ads/config.ts
+export const ADS_PAUSED = true;
+
+// src/ads/sdk.ts
+export function loadAds() {
+  if (override !== undefined) return override;
+  if (ADS_PAUSED) return null;   // ← before the require, not around it
+  try { return require('react-native-google-mobile-ads'); } catch { return null; }
+}
+```
+
+plus, belt and braces, the package stays out of the Android build:
 
 ```js
+// react-native.config.js
 dependencies: {
   'react-native-google-mobile-ads': { platforms: { android: null, ios: null } },
 }
 ```
 
-What that changes at runtime: `require` inside `sdk.ts` throws because the
-TurboModule is not registered, `adsAvailable()` returns false, the unlock card
-never renders, and every PDF tool is free. That is the same path the web build
-and Expo Go already take, so nothing else needed changing.
+What that changes at runtime: `adsAvailable()` is false, the unlock card never
+renders, `ProNote` says "Pro tools are open in this build", and all 21 tools are
+free. The package stays in `node_modules` and in `package.json` so that re-enabling
+is a one-word change rather than a reinstall.
 
-Why not uninstall: Metro resolves every `require` at bundle time. A missing
-package is a build failure, not a caught exception, so `sdk.ts` would have to
-lose its loader too — and re-adding ads would then be a rewrite instead of a
-one-line revert.
+`__tests__/ads.test.tsx` asserts three things about this state: that the pause is
+on, that the pause check appears **before** the `require` in the source, and that
+the package is unlinked from Android. Re-linking without deleting those tests
+fails the build.
 
-To switch ads back on: delete the `platforms` key, delete the guard test in
-`__tests__/ads.test.tsx` (it is deliberately in the way), and ship. If the
-launch crash returns, the SDK — not the config — is the cause, and it needs a
-different integration or a library fix.
+### Turning ads back on
+
+Delete the `platforms` entry, set `ADS_PAUSED = false`, delete the pause tests,
+and ship. If the launch crash returns, the SDK is the cause and it needs a
+different integration — deferred initialisation, or a different library — not
+another retry.
 

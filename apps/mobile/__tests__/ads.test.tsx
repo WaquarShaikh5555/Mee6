@@ -11,7 +11,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { ReactNode } from 'react';
 
-import { AD_APP_ID, REWARDED_UNIT_ID, UNLOCK_HOURS, USING_TEST_ADS } from '@/ads/config';
+import { ADS_PAUSED, AD_APP_ID, REWARDED_UNIT_ID, UNLOCK_HOURS, USING_TEST_ADS } from '@/ads/config';
 import {
   currentEntitlement,
   describeTimeLeft,
@@ -362,26 +362,40 @@ describe('the platform shim', () => {
 });
 
 describe('the pause', () => {
-  // The ads SDK is installed but deliberately not linked into Android. It was
-  // the only new native code between the last build that launched and the
-  // first one that did not, so it leaves the build until the cause is found.
-  //
-  // This test is the guard on that decision: re-linking it fails here, which
-  // forces the person doing it to read this and delete the test on purpose.
-  it('keeps the ads SDK out of the Android build', () => {
+  const source = (file: string) =>
+    readFileSync(join(__dirname, '..', 'src', 'ads', file), 'utf8');
+
+  // Importing the ad package registers a native view. With the native side
+  // unlinked — which is how 0.11.1 shipped — that registration is not a
+  // catchable JS error on a device: the process dies with it. That is why
+  // PDF Arena closed the app the moment it was tapped, and why the require
+  // is now skipped rather than wrapped.
+  it('is switched on, and the require is never reached', () => {
+    expect(ADS_PAUSED).toBe(true);
+
+    const text = source('sdk.ts');
+    const guard = text.indexOf('if (ADS_PAUSED) return null;');
+    const load = text.indexOf("require('react-native-google-mobile-ads')");
+
+    expect(guard).toBeGreaterThan(-1);
+    expect(load).toBeGreaterThan(-1);
+    // Before, not after: a try/catch around a native-side crash is no help.
+    expect(guard).toBeLessThan(load);
+  });
+
+  it('answers "no ads" to everything that asks', () => {
+    const sdk = require('@/ads/sdk') as { loadAds: () => unknown; __setAdsForTests: (m: unknown) => void };
+
+    sdk.__setAdsForTests(undefined);
+    expect(sdk.loadAds()).toBeNull();
+    expect(adsAvailable()).toBe(false);
+  });
+
+  it('leaves the SDK installed but out of the Android build', () => {
     const config = require('../react-native.config.js') as {
       dependencies: Record<string, { platforms?: { android?: null; ios?: null } }>;
     };
 
-    const entry = config.dependencies['react-native-google-mobile-ads'];
-    expect(entry).toBeTruthy();
-    expect(entry.platforms?.android).toBeNull();
-    expect(entry.platforms?.ios).toBeNull();
-  });
-
-  it('still resolves in Metro, so the require stays caught rather than fatal', () => {
-    // Uninstalling would make Metro fail to resolve the require at bundle
-    // time. Being installed and merely unlinked keeps `sdk.ts` a try/catch.
-    expect(() => require.resolve('react-native-google-mobile-ads')).not.toThrow();
+    expect(config.dependencies['react-native-google-mobile-ads']?.platforms?.android).toBeNull();
   });
 });

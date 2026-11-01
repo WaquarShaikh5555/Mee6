@@ -36,6 +36,26 @@ const SAMPLE_REWARDED_UNIT_ID: string = 'ca-app-pub-3940256099942544/5224354917'
 export const USING_TEST_ADS =
   AD_APP_ID === SAMPLE_APP_ID || REWARDED_UNIT_ID === SAMPLE_REWARDED_UNIT_ID;
 
+/**
+ * Ads are paused in this build.
+ *
+ * 0.10.0 and 0.11.0 closed themselves on launch. 0.11.1 took the SDK out of the
+ * native build and the app opened — but tapping PDF Arena still killed it,
+ * because that screen is the first thing that *imports* the ad package, and the
+ * package's JavaScript registers a native view on load. With the native side
+ * unlinked, that registration is not a catchable error on a device: the process
+ * goes down with it.
+ *
+ * So the require is skipped outright. Nothing in the bundle ever touches
+ * `react-native-google-mobile-ads` while this is true, `adsAvailable()` answers
+ * false, and the whole app behaves as it does in the web preview: no gate, no
+ * card, every tool open.
+ *
+ * Turning ads back on is this one word plus a rebuild — and it needs the crash
+ * understood first, not merely re-tried.
+ */
+export const ADS_PAUSED = true;
+
 /** How long one ad buys. The single number that decides generosity. */
 export const UNLOCK_HOURS = 48;
 

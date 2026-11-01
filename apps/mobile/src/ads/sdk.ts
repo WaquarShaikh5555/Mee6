@@ -12,6 +12,7 @@
  * this `catch` is what makes that a quiet "no ads" instead of a bundle error.
  */
 
+import { ADS_PAUSED } from './config';
 import type { AdsModule } from './sdk.types';
 
 let override: AdsModule | null | undefined;
@@ -23,6 +24,11 @@ export function __setAdsForTests(module: AdsModule | null | undefined): void {
 
 export function loadAds(): AdsModule | null {
   if (override !== undefined) return override;
+
+  // See the comment on ADS_PAUSED: merely *importing* the package registers a
+  // native view, and an unlinked native view takes the process down. The check
+  // has to come before the require, not around it.
+  if (ADS_PAUSED) return null;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
