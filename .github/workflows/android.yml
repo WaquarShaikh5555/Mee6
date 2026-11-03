@@ -162,6 +162,13 @@ jobs:
           # with nothing to switch on in Accessibility settings.
           grep -q "FocusAccessibilityService" /tmp/manifest.txt
           grep -q "BIND_ACCESSIBILITY_SERVICE" /tmp/manifest.txt
+          # The ads SDK reads this meta-data at startup and refuses to run
+          # without it. It lives in the rewarded module's own manifest now, so
+          # the merge is the only thing standing between us and a crash on the
+          # first tap. Checked here because it cannot be checked from a test.
+          grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt
+          grep -q "ca-app-pub-8602760833611299~1068854218" /tmp/manifest.txt
+          echo "manifest carries the AdMob app id"
           for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
             grep -q "$app" /tmp/manifest.txt
           done
