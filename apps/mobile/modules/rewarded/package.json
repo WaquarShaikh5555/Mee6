@@ -1,0 +1,7 @@
+{
+  "name": "rewarded",
+  "version": "0.1.0",
+  "description": "Rewarded ads via the Google Mobile Ads SDK, with no React Native wrapper",
+  "main": "index.ts",
+  "private": true
+}

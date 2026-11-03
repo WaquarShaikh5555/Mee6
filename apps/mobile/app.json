@@ -2,7 +2,7 @@
   "expo": {
     "name": "Shaikh's",
     "slug": "shaikhs",
-    "version": "0.11.2",
+    "version": "0.12.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "shaikhs",
@@ -41,14 +41,6 @@
             "backgroundColor": "#090D0E",
             "image": "./assets/images/splash-icon.png"
           }
-        }
-      ],
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-8602760833611299~1068854218",
-          "delayAppMeasurementInit": false,
-          "optimizeInitialization": true
         }
       ]
     ],

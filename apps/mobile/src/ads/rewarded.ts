@@ -10,14 +10,15 @@
  * A rewarded ad is the one format that asks first and pays for consent with
  * something the person actually wanted.
  *
- * The native module is loaded **optionally**. In the web preview and in Expo Go
- * there is no Google Mobile Ads, and the app must keep working — so a missing
- * module is a state ("no ads here"), not a crash.
+ * **Where it comes from:** our own Expo module (`modules/rewarded`), which calls
+ * Google's Mobile Ads SDK directly. The React Native wrapper package used to sit
+ * here and it closed the app on launch — importing it registers a native view,
+ * and that registration is not something a `try`/`catch` can survive. This file
+ * has no such import: the module is looked up at runtime, and a build without it
+ * simply has no ads.
  */
 
-import { NON_PERSONALISED_ONLY, REWARDED_UNIT_ID } from './config';
-import { __setAdsForTests as setAdsModule, loadAds } from './sdk';
-import type { AdsModule } from './sdk.types';
+import { ADS_PAUSED, REWARDED_UNIT_ID } from './config';
 
 export type WatchResult =
   /** The person watched it through and the reward was granted. */
@@ -26,60 +27,64 @@ export type WatchResult =
   | 'closed'
   /** Nothing to show — no fill, no connection, or an SDK error. */
   | 'failed'
-  /** No ad SDK in this build at all (web, Expo Go, or a build without it). */
+  /** No ad support in this build at all (web, Expo Go, or a build without it). */
   | 'unavailable';
 
-// The SDK lives behind a platform shim: native loads the real package, web
-// never touches it (its bundle would drag in a native-only module and fail).
-// Re-exported here so callers and tests still reach it through `rewarded`.
+type NativeRewarded = {
+  show: (unitId: string) => Promise<{ outcome?: string } | null>;
+};
 
-/** Test seam: a fake SDK, or `null` to pretend there is none. */
-export function __setAdsForTests(module: AdsModule | null | undefined): void {
-  setAdsModule(module);
-  initialised = null;
+let override: NativeRewarded | null | undefined;
+
+/** Test seam: a fake module, or `null` to pretend there is none. */
+export function __setAdsForTests(module: NativeRewarded | null | undefined): void {
+  override = module;
+  available = null;
 }
-
-/** False in the browser, in Expo Go, and in any build without the SDK. */
-export function adsAvailable(): boolean {
-  return loadAds() !== null;
-}
-
-let initialised: Promise<void> | null = null;
 
 /**
- * Initialises the SDK once per launch.
+ * The native module, if this build has one.
  *
- * `maxAdContentRating` is G: this app is used for contracts and schoolwork and
- * has no business serving anything else. Request configuration is set before
- * the first ad request, which is the only time it is read.
+ * Looked up through `expo-modules-core` at call time rather than imported, so
+ * the web preview and Expo Go take the same path they always did: no module,
+ * no ads, every tool free.
  */
-async function ensureReady(ads: AdsModule): Promise<void> {
-  if (initialised) return initialised;
+function nativeModule(): NativeRewarded | null {
+  if (override !== undefined) return override;
 
-  initialised = (async () => {
-    const mobileAds = ads.default;
-    await mobileAds().setRequestConfiguration({
-      maxAdContentRating: 'G' as never,
-      // Nothing here is directed at children, and pretending otherwise would
-      // serve worse ads for no benefit.
-      tagForChildDirectedTreatment: false,
-      tagForUnderAgeOfConsent: false,
-    });
-    await mobileAds().initialize();
-  })().catch((error: unknown) => {
-    initialised = null;
-    throw error;
-  });
-
-  return initialised;
+  try {
+    const core = require('expo-modules-core') as {
+      requireOptionalNativeModule?: (name: string) => unknown;
+    };
+    const module = core.requireOptionalNativeModule?.('RewardedAds');
+    return (module as NativeRewarded | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
-const LOAD_TIMEOUT_MS = 15_000;
+/**
+ * Whether this build can show an ad at all.
+ *
+ * Cached: a build either has the module or it does not, and the answer is asked
+ * for on every render of every tile in the Arena — twenty-one of them per pass.
+ * Repeated native-module lookups there are pure cost for an answer that cannot
+ * change while the app is running.
+ */
+let available: boolean | null = null;
+
+/** False in the browser, in Expo Go, and in any build without the module. */
+export function adsAvailable(): boolean {
+  if (available === null) available = nativeModule() !== null;
+  return available;
+}
+
+const OUTCOMES: WatchResult[] = ['earned', 'closed', 'failed', 'unavailable'];
 
 /**
  * Shows one rewarded ad and reports what happened.
  *
- * The three outcomes matter to the caller:
+ * The outcomes matter to the caller:
  *  - `earned`   → grant the window.
  *  - `closed`   → say nothing unkind; the person chose not to finish.
  *  - `failed` /
@@ -90,65 +95,16 @@ const LOAD_TIMEOUT_MS = 15_000;
  *    frustrating thing a rewarded-ad app can do.
  */
 export async function showRewarded(): Promise<WatchResult> {
-  const ads = loadAds();
+  if (ADS_PAUSED) return 'unavailable';
+
+  const ads = nativeModule();
   if (!ads) return 'unavailable';
 
   try {
-    await ensureReady(ads);
+    const result = await ads.show(REWARDED_UNIT_ID);
+    const outcome = result?.outcome;
+    return OUTCOMES.includes(outcome as WatchResult) ? (outcome as WatchResult) : 'failed';
   } catch {
     return 'failed';
   }
-
-  return new Promise<WatchResult>((resolve) => {
-    let settled = false;
-    let earned = false;
-    const teardown: (() => void)[] = [];
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const finish = (result: WatchResult) => {
-      if (settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      for (const remove of teardown) {
-        try {
-          remove();
-        } catch {
-          // An already-removed listener is not a problem.
-        }
-      }
-      resolve(result);
-    };
-
-    try {
-      const ad = ads.RewardedAd.createForAdRequest(REWARDED_UNIT_ID, {
-        requestNonPersonalizedAdsOnly: NON_PERSONALISED_ONLY,
-      });
-
-      teardown.push(
-        ad.addAdEventListener(ads.RewardedAdEventType.LOADED, () => {
-          if (timer) {
-            clearTimeout(timer);
-            timer = null;
-          }
-          // `show` rejects if the screen went away mid-flow; treat that as a
-          // failed show rather than an unhandled rejection.
-          ad.show().catch(() => finish(earned ? 'earned' : 'failed'));
-        }),
-        ad.addAdEventListener(ads.RewardedAdEventType.EARNED_REWARD, () => {
-          earned = true;
-        }),
-        ad.addAdEventListener(ads.AdEventType.CLOSED, () => {
-          finish(earned ? 'earned' : 'closed');
-        }),
-        ad.addAdEventListener(ads.AdEventType.ERROR, () => {
-          finish(earned ? 'earned' : 'failed');
-        }),
-      );
-
-      timer = setTimeout(() => finish(earned ? 'earned' : 'failed'), LOAD_TIMEOUT_MS);
-      ad.load();
-    } catch {
-      finish('failed');
-    }
-  });
 }

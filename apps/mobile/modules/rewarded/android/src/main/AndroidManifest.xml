@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      The Google Mobile Ads SDK reads this at process start and throws if it is
+      missing. It used to be injected by the react-native-google-mobile-ads
+      config plugin; the plugin left with the package, so the id lives here.
+
+      It must match AD_APP_ID in src/ads/config.ts — a test compares the two,
+      because a mismatch kills the app before any screen can say why.
+    -->
+    <meta-data
+      android:name="com.google.android.gms.ads.APPLICATION_ID"
+      android:value="ca-app-pub-8602760833611299~1068854218" />
+  </application>
+</manifest>

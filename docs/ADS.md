@@ -127,52 +127,54 @@ behaviour for a browser preview: a gate with nothing behind it would be a lie.
 `__tests__/ads.test.tsx` pins both halves of the shim, so the web bundle cannot
 regress into importing the native package again.
 
-## Paused: the SDK is not loaded and not linked (0.11.2)
+## Our own module, not a React Native package (0.12.0)
 
-`react-native-google-mobile-ads` arrived in 0.10.0 and the app closed itself on
-launch. 0.11.1 took the package out of the **native** build and the app opened —
-but tapping **PDF Arena** still killed it. That screen is the first thing that
-*imports* the ad package, and importing it registers a native view; with the
-native side unlinked, that registration is not a JS exception on a device, it is
-a process death. A `try`/`catch` cannot see it.
+`react-native-google-mobile-ads` is gone. It is not vendored, not patched, not
+lazily imported — it is uninstalled. Three builds died proving why: importing it
+registers a Fabric view component, and an unlinked or mismatched native side
+turns that registration into a process death, not a catchable exception.
 
-So there are now two layers, and the JS one is the one that matters:
+`modules/rewarded` is a small Expo module that calls Google's SDK directly:
 
-```ts
-// src/ads/config.ts
-export const ADS_PAUSED = true;
-
-// src/ads/sdk.ts
-export function loadAds() {
-  if (override !== undefined) return override;
-  if (ADS_PAUSED) return null;   // ← before the require, not around it
-  try { return require('react-native-google-mobile-ads'); } catch { return null; }
-}
+```gradle
+implementation "com.google.android.gms:play-services-ads:25.5.0"
 ```
 
-plus, belt and braces, the package stays out of the Android build:
-
-```js
-// react-native.config.js
-dependencies: {
-  'react-native-google-mobile-ads': { platforms: { android: null, ios: null } },
-}
+```
+src/ads/rewarded.ts  →  requireOptionalNativeModule('RewardedAds')
+                     →  show(unitId)  →  "earned" | "closed" | "failed" | "unavailable"
 ```
 
-What that changes at runtime: `adsAvailable()` is false, the unlock card never
-renders, `ProNote` says "Pro tools are open in this build", and all 21 tools are
-free. The package stays in `node_modules` and in `package.json` so that re-enabling
-is a one-word change rather than a reinstall.
+Why this cannot repeat the crash:
 
-`__tests__/ads.test.tsx` asserts three things about this state: that the pause is
-on, that the pause check appears **before** the `require` in the source, and that
-the package is unlinked from Android. Re-linking without deleting those tests
-fails the build.
+- **Nothing is registered at import time.** Expo modules are discovered by the
+  Expo runtime at startup, not by evaluating a JS import.
+- **No Fabric component.** We only ever show a rewarded ad, which is a native
+  activity the SDK owns. No banner view, so no view manager, so nothing for the
+  React renderer to look up and fail on.
+- **One function.** `Name("RewardedAds")` with a single `AsyncFunction("show")`.
+  The smaller the surface, the smaller the blast radius.
+- **It is optional at runtime.** `requireOptionalNativeModule` returns null in a
+  build without it (web preview, Expo Go), and the app behaves as it always has
+  there: no ads, no gate, every tool free.
 
-### Turning ads back on
+The AdMob app id moved with the plugin that used to inject it: it now lives in
+`modules/rewarded/android/src/main/AndroidManifest.xml`, and a test compares it
+against `AD_APP_ID` in `src/ads/config.ts`, because a mismatch kills the app
+before a single screen can explain itself.
 
-Delete the `platforms` entry, set `ADS_PAUSED = false`, delete the pause tests,
-and ship. If the launch crash returns, the SDK is the cause and it needs a
-different integration — deferred initialisation, or a different library — not
-another retry.
+### The brake
+
+`ADS_PAUSED` in `src/ads/config.ts` is the emergency switch. True means "ask for
+nothing, grant everything" — it is what 0.11.2 shipped while the crash was being
+chased, and it stays because a one-word change is a better answer to a bad build
+than a revert and a rebuild.
+
+### What is not done yet
+
+Ad requests currently carry no personalisation signals and no consent flag. That
+is fine for India, and it is deliberately not "personalised". Before distributing
+in the EEA or UK, Google's UMP consent SDK has to be added — `npa` extras in the
+request — and this section updated with it. Until then: no personalised ads, no
+consent dialog needed, and no user identifiers sent by us.
 

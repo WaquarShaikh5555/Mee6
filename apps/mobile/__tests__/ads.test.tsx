@@ -60,40 +60,20 @@ function wrap(node: ReactNode) {
   return render(<ThemeProvider>{node}</ThemeProvider>);
 }
 
-/* ------------------------------------------------------------- fake SDK --- */
+/* --------------------------------------------------------- fake module --- */
 
-type Listener = (...args: unknown[]) => void;
-
-/** A rewarded ad that plays a script: which events fire, and in what order. */
-function fakeAds(script: 'earned' | 'closed' | 'error') {
-  const listeners: Record<string, Listener> = {};
-
-  const ad = {
-    addAdEventListener: (event: string, listener: Listener) => {
-      listeners[event] = listener;
-      return () => {};
-    },
-    load: () => {
-      if (script === 'error') {
-        setTimeout(() => listeners['error']?.(), 0);
-        return;
-      }
-      setTimeout(() => listeners['rewarded_loaded']?.(), 0);
-    },
-    show: async () => {
-      if (script === 'earned') listeners['rewarded_earned_reward']?.();
-      listeners['closed']?.();
-    },
-  };
-
+/**
+ * The native module's whole surface is one function, so the fake is one
+ * function. `unavailable` is what the module itself answers when there is no
+ * activity to draw on; `rejects` models a bridge-level failure.
+ */
+function fakeAds(outcome: 'earned' | 'closed' | 'failed' | 'unavailable' | 'rejects') {
   return {
-    default: () => ({
-      setRequestConfiguration: async () => {},
-      initialize: async () => [],
+    show: jest.fn(async () => {
+      if (outcome === 'rejects') throw new Error('bridge went away');
+      // The real module answers with a map; anything else must not be trusted.
+      return { outcome };
     }),
-    RewardedAd: { createForAdRequest: () => ad },
-    RewardedAdEventType: { LOADED: 'rewarded_loaded', EARNED_REWARD: 'rewarded_earned_reward' },
-    AdEventType: { CLOSED: 'closed', ERROR: 'error', LOADED: 'loaded' },
   } as never;
 }
 
@@ -105,24 +85,23 @@ beforeEach(() => {
 /* ------------------------------------------------------------------ tests --- */
 
 describe('the identifiers cannot drift apart', () => {
-  it('pins the app id in config.ts to the one the manifest is built with', () => {
+  it('pins the app id in config.ts to the one the SDK reads from the manifest', () => {
     // A mismatch crashes at launch with "Invalid application ID", before a
     // single line of app code runs — there is no screen to show an error on.
-    const appJson = JSON.parse(
-      readFileSync(join(__dirname, '..', 'app.json'), 'utf8'),
-    ) as { expo: { plugins: unknown[] } };
-
-    const plugin = appJson.expo.plugins.find(
-      (entry): entry is [string, { androidAppId: string }] =>
-        Array.isArray(entry) && entry[0] === 'react-native-google-mobile-ads',
+    // The meta-data used to come from the ad package's config plugin; that
+    // package is gone, so our own module's manifest carries it.
+    const manifest = readFileSync(
+      join(__dirname, '..', 'modules', 'rewarded', 'android', 'src', 'main', 'AndroidManifest.xml'),
+      'utf8',
+    );
+    const match = manifest.match(
+      /com\.google\.android\.gms\.ads\.APPLICATION_ID"[\s\S]*?android:value="([^"]+)"/,
     );
 
-    expect(plugin?.[1]?.androidAppId).toBe(AD_APP_ID);
+    expect(match?.[1]).toBe(AD_APP_ID);
   });
 
   it('carries the live units, not the samples', () => {
-    // Well-formed, and actually earning. The sample ids serve test ads, which
-    // pay nothing — a build that ships with them looks fine and earns zero.
     expect(AD_APP_ID).toMatch(/^ca-app-pub-\d{16}~\d{10}$/);
     expect(REWARDED_UNIT_ID).toMatch(/^ca-app-pub-\d{16}\/\d{10}$/);
     expect(AD_APP_ID).not.toBe('ca-app-pub-3940256099942544~3347511713');
@@ -233,7 +212,7 @@ describe('the ad itself', () => {
   });
 
   it('reports a failure instead of hanging when there is no fill', async () => {
-    __setAdsForTests(fakeAds('error'));
+    __setAdsForTests(fakeAds('failed'));
     await expect(showRewarded()).resolves.toBe('failed');
   });
 });
@@ -279,7 +258,7 @@ describe('the card', () => {
   it('unlocks anyway when no ad can be shown, and says so', async () => {
     // The most important behaviour in the whole feature: the wall opens.
     const onUnlocked = jest.fn();
-    __setAdsForTests(fakeAds('error'));
+    __setAdsForTests(fakeAds('failed'));
 
     await wrap(<UnlockCard toolName="Protect" onClose={() => {}} onUnlocked={onUnlocked} />);
 
@@ -333,69 +312,53 @@ describe('in the app', () => {
   });
 });
 
-describe('the platform shim', () => {
-  const read = (file: string) =>
-    readFileSync(join(__dirname, '..', 'src', 'ads', file), 'utf8');
+describe('the native module', () => {
+  const moduleFile = (name: string) =>
+    readFileSync(join(__dirname, '..', 'modules', 'rewarded', name), 'utf8');
 
-  // The ad package imports a native-only React Native module. Importing it on
-  // the web is not a warning — it fails the whole export, and with it every
-  // preview and the web build. Only the .web shim may be resolved there, and
-  // the shim must never reach for the package.
-  it('keeps the native package out of the web build', () => {
-    expect(read('sdk.web.ts')).not.toMatch(/require\(\s*['"]react-native-google-mobile-ads/);
-    expect(read('sdk.web.ts')).not.toMatch(/from\s+['"]react-native-google-mobile-ads/);
+  it('wraps Google\'s SDK directly, with no React Native package in between', () => {
+    // The crash that cost three builds: importing react-native-google-mobile-ads
+    // registers a native view, and an unlinked native view takes the process
+    // down. This is an Expo module — registered once by the Expo runtime, not at
+    // import time — so it cannot repeat that.
+    const gradle = moduleFile('android/build.gradle');
+
+    expect(gradle).toMatch(/com\.google\.android\.gms:play-services-ads:/);
+    expect(gradle).not.toMatch(/react-native-google-mobile-ads/);
   });
 
-  it('is the only place the native package is loaded', () => {
-    const importers = ['rewarded.ts', 'useUnlock.ts', 'UnlockCard.tsx', 'config.ts', 'pro.ts']
-      .map((file) => [file, read(file)] as const)
-      .filter(([, text]) => /require\(\s*['"]react-native-google-mobile-ads/.test(text))
-      .map(([file]) => file);
+  it('is looked up at runtime, so a build without it simply has no ads', () => {
+    const source = readFileSync(join(__dirname, '..', 'src', 'ads', 'rewarded.ts'), 'utf8');
 
-    expect(importers).toEqual([]);
+    expect(source).toMatch(/requireOptionalNativeModule\?\.\('RewardedAds'\)/);
+    // No static import of anything native, ever.
+    expect(source).not.toMatch(/^import .*(google-mobile-ads|react-native)/m);
   });
 
-  it('gives the web no ads and therefore no gate', () => {
-    const web = require('@/ads/sdk.web') as { loadAds: () => unknown };
-    expect(web.loadAds()).toBeNull();
+  it('exposes one function that answers with one of four words', () => {
+    const module = moduleFile('android/src/main/java/expo/modules/rewarded/RewardedModule.kt');
+
+    expect(module).toMatch(/Name\("RewardedAds"\)/);
+    expect(module.match(/AsyncFunction\(/g)?.length).toBe(1);
+    for (const outcome of ['"earned"', '"closed"', '"failed"', '"unavailable"']) {
+      expect(module).toContain(outcome);
+    }
   });
 });
 
-describe('the pause', () => {
-  const source = (file: string) =>
-    readFileSync(join(__dirname, '..', 'src', 'ads', file), 'utf8');
-
-  // Importing the ad package registers a native view. With the native side
-  // unlinked — which is how 0.11.1 shipped — that registration is not a
-  // catchable JS error on a device: the process dies with it. That is why
-  // PDF Arena closed the app the moment it was tapped, and why the require
-  // is now skipped rather than wrapped.
-  it('is switched on, and the require is never reached', () => {
-    expect(ADS_PAUSED).toBe(true);
-
-    const text = source('sdk.ts');
-    const guard = text.indexOf('if (ADS_PAUSED) return null;');
-    const load = text.indexOf("require('react-native-google-mobile-ads')");
-
-    expect(guard).toBeGreaterThan(-1);
-    expect(load).toBeGreaterThan(-1);
-    // Before, not after: a try/catch around a native-side crash is no help.
-    expect(guard).toBeLessThan(load);
+describe('the brake', () => {
+  it('is off, so ads run', () => {
+    expect(ADS_PAUSED).toBe(false);
   });
 
-  it('answers "no ads" to everything that asks', () => {
-    const sdk = require('@/ads/sdk') as { loadAds: () => unknown; __setAdsForTests: (m: unknown) => void };
+  it('short-circuits before the module is asked', () => {
+    // The point of a brake is that nothing happens. Checked before the call,
+    // not around it.
+    const source = readFileSync(join(__dirname, '..', 'src', 'ads', 'rewarded.ts'), 'utf8');
+    const brake = source.indexOf('if (ADS_PAUSED) return');
+    const call = source.indexOf('await ads.show(');
 
-    sdk.__setAdsForTests(undefined);
-    expect(sdk.loadAds()).toBeNull();
-    expect(adsAvailable()).toBe(false);
-  });
-
-  it('leaves the SDK installed but out of the Android build', () => {
-    const config = require('../react-native.config.js') as {
-      dependencies: Record<string, { platforms?: { android?: null; ios?: null } }>;
-    };
-
-    expect(config.dependencies['react-native-google-mobile-ads']?.platforms?.android).toBeNull();
+    expect(brake).toBeGreaterThan(-1);
+    expect(brake).toBeLessThan(call);
   });
 });
