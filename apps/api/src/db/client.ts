@@ -43,9 +43,8 @@ export async function createDatabase(options: CreateOptions = {}): Promise<Datab
     const pool = new Pool({
       connectionString: options.url,
       max: options.maxConnections ?? 10,
-      // Managed Postgres fronted by a proxy: keep TLS on, accept the provider CA
-      // through sslmode in the URL rather than disabling verification globally.
-      ssl: options.url.includes('sslmode=disable') ? false : { rejectUnauthorized: false },
+      // Use Node's trusted CA store to verify the server unless explicitly disabled.
+      ssl: options.url.includes('sslmode=disable') ? false : { rejectUnauthorized: true },
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
     });
