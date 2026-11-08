@@ -1,0 +1,33 @@
+# Shallow clone cache used by tools/install-skills.sh
+.cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Build output
+build/
+dist/
+out/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+*.dSYM/
+
+# Local secrets and signing material - never commit these
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+keystore.properties
+*.xcconfig.local
+.env
+.env.*
+!.env.example
+
+# OS noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+{
+  "name": "focus",
+  "version": "0.1.0",
+  "description": "Focus Mode — closes the compulsive surfaces of social apps on Android",
+  "main": "index.ts",
+  "private": true
+}

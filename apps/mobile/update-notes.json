@@ -1,0 +1,58 @@
+{
+  "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.12.0": [
+    "The app stops closing. Ads now come from a small module of our own instead of the library that crashed it.",
+    "Ads are back on: one ad opens the 11 extra PDF tools for 48 hours, and the everyday tools stay free.",
+    "Focus Mode, updates and your settings are untouched."
+  ],
+  "0.11.2": [
+    "Opening PDF Arena no longer closes the app. The ad software is fully switched off until that is fixed.",
+    "Every tool is free while ads are paused — nothing is locked, nothing asks for anything.",
+    "Focus Mode, updates and your settings are untouched."
+  ],
+  "0.11.1": [
+    "Fixes the app closing the moment you opened it. The ad software is switched off in this build while that is sorted.",
+    "Everything else stays: Focus Mode, all 21 PDF tools, and nothing is locked while ads are paused.",
+    "Your settings carry across — nothing to re-enter, nothing to reinstall twice."
+  ],
+  "0.11.0": [
+    "Regain is now Focus Mode. Same feature, same rules, and your settings come across on their own.",
+    "Android ties the accessibility permission to the feature's name, so turn Focus Mode on once more in Settings → Accessibility.",
+    "Real ads are live, and they only ever appear in PDF Arena when you choose one."
+  ],
+  "0.10.0": [
+    "11 extra PDF tools — protect, watermark, compare, repair — open for 48 hours after one short ad.",
+    "Everyday tools stay free: merge, split, sign, rotate, compress and the rest never ask.",
+    "No ads in Focus Mode, and no banners anywhere. One ad, only when you choose it."
+  ],
+  "0.9.5": [
+    "Signing: the ink shows on the page while you place it, in a frame you can drag.",
+    "The lite edition now updates to the lite edition — never back to the build with Focus Mode.",
+    "PDF Arena unchanged otherwise: 21 tools, results saved to Downloads, one-tap updates."
+  ],
+  "0.9.4": [
+    "Signing: the ink now shows on the page while you place it, in a frame you can drag.",
+    "The signature in the card on the tool screen is visible too, instead of a white box.",
+    "Everything else is unchanged: 21 PDF tools, results saved to Downloads, one-tap updates."
+  ],
+  "0.9.3": [
+    "A \"lite\" edition of the app now installs with no security prompt at all — it leaves Focus Mode out.",
+    "The full app still has Focus Mode; Play Protect blocks it until you switch scanning off once.",
+    "Updates: the prompt picks the package built for your phone and checks it arrived intact."
+  ],
+  "0.9.2": [
+    "The update prompt now picks the package built for your phone — about half the size.",
+    "The app updates itself in one tap, and checks the file arrived intact first.",
+    "PDF Arena: sign, place, and every result lands in your Downloads folder."
+  ],
+  "0.9.1": [
+    "Installs are now checked against the file's fingerprint, so a broken download says so instead of failing at Android.",
+    "The app shows what is new, then updates itself in one tap.",
+    "PDF Arena: sign, place, and every result lands in your Downloads folder."
+  ],
+  "0.9.0": [
+    "Updates now install from inside the app — no browser, no hunting for a file.",
+    "A prompt at launch shows what changed, with five seconds before Update unlocks.",
+    "PDF Arena: sign with your finger or a photo, then drag and pinch it into place."
+  ]
+}

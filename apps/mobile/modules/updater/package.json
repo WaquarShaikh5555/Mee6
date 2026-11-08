@@ -1,0 +1,7 @@
+{
+  "name": "updater",
+  "version": "0.1.0",
+  "description": "Updating Shaikh's from inside Shaikh's",
+  "main": "index.ts",
+  "private": true
+}

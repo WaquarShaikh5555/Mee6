@@ -1,0 +1,514 @@
+name: Android app
+
+# Builds a real, installable APK and attaches it to the "apk" release, so the
+# download link never changes:
+#
+#   https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs.apk
+#
+# Signing: Expo's generated project signs release builds with the standard
+# debug keystore that ships inside the React Native template. That key is the
+# same on every run, so updates install over each other — but it is also a
+# public key, so this build is for sideloading only, never the Play Store.
+
+on:
+  push:
+    branches: [arena/b0b002ad-mee6]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    env:
+      # Publishable values only. The anon key is designed to be embedded in a
+      # client app; every table is protected by row-level security, so it grants
+      # nothing on its own. The service_role / secret key must never appear here.
+      EXPO_PUBLIC_SUPABASE_URL: https://ngufuocbyqrucrytqzbt.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndWZ1b2NieXFydWNyeXRxemJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MDAzMDUsImV4cCI6MjEwODA3NjMwNX0.LqESWeC2i8JLdSYTzzTeGQEEAEZlOnkT2417-KkcA3g
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail fast: a type error or a broken rule should stop the build here,
+      # not after twenty minutes of Gradle.
+      - name: Type-check and test
+        run: npm run verify
+
+      # Android refuses an update whose version code is not newer than the
+      # installed one, so it is derived from the version rather than left at the
+      # default 1: 0.9.0 builds as 900, 0.10.1 as 1001.
+      - name: Stamp the version code
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'app.json';
+          const app = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+          const [major, minor, patch] = app.expo.version.split('.').map((n) => parseInt(n, 10) || 0);
+          const versionCode = major * 10000 + minor * 100 + patch;
+
+          app.expo.android = { ...app.expo.android, versionCode };
+          fs.writeFileSync(path, JSON.stringify(app, null, 2) + '\n');
+
+          console.log('version', app.expo.version, '-> versionCode', versionCode);
+          "
+
+      - name: Generate the Android project
+        run: |
+          set -o pipefail
+          npx expo prebuild --platform android --no-install --clean 2>&1 | tee build.log
+
+      # One APK per CPU type, plus a universal one. A phone downloading 30 MB
+      # instead of 60 MB is the difference between an install that survives a
+      # mobile connection and one that arrives truncated — and a truncated
+      # package is exactly what Android calls "package appears to be invalid".
+      #
+      # Appended rather than spliced in: Gradle allows more than one `android`
+      # block, and appending cannot corrupt the generated file.
+      - name: Split the APK by CPU type
+        run: |
+          {
+            echo ""
+            echo "android {"
+            echo "    splits {"
+            echo "        abi {"
+            echo "            enable true"
+            echo "            reset()"
+            echo "            include 'arm64-v8a', 'armeabi-v7a'"
+            echo "            universalApk true"
+            echo "        }"
+            echo "    }"
+            echo "}"
+          } >> android/app/build.gradle
+
+          grep -q "universalApk true" android/app/build.gradle
+          echo "release build now writes one APK per CPU type plus a universal one"
+
+      - name: Build the APK
+        run: |
+          set -o pipefail
+          cd android
+          # arm64 + 32-bit ARM: every real phone. The two x86 ABIs only exist
+          # for emulators and double the native build time for nothing.
+          # Compressed native libraries. They are unpacked on install, so the
+          # app costs the same on the phone but the download — the part that has
+          # to survive a mobile connection — is roughly 40% smaller.
+          ./gradlew :app:assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pexpo.useLegacyPackaging=true \
+            --no-daemon --stacktrace 2>&1 | tee -a ../build.log
+
+      - name: Check the build
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/apk/release
+          APK=$OUT/app-universal-release.apk
+          test -f "$APK"
+          ls -lh "$OUT"
+
+          # Every package must read back as a whole archive, not a half-written
+          # file. This is the exact failure a person sees as "package appears to
+          # be invalid", so it is caught here rather than on their phone.
+          for apk in "$OUT"/*.apk; do
+            unzip -tqq "$apk" > /dev/null
+            echo "archive ok: $(basename "$apk")"
+          done
+          unzip -l "$APK" | grep -q "assets/index.android.bundle"
+          # If the Supabase URL is missing the app would silently run in demo
+          # mode; refuse to publish a build like that.
+          unzip -p "$APK" assets/index.android.bundle > /tmp/bundle.js
+          grep -q "ngufuocbyqrucrytqzbt" /tmp/bundle.js
+          echo "bundle carries the live Supabase project"
+
+          TOOLS="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+          AAPT2="$(ls -d "$TOOLS"/*/aapt2 | sort -V | tail -1)"
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$APK" > /tmp/manifest.txt
+          grep -q "com.shaikhs.app" /tmp/manifest.txt
+          # The service has to survive manifest merging, or the app installs
+          # with nothing to switch on in Accessibility settings.
+          grep -q "FocusAccessibilityService" /tmp/manifest.txt
+          grep -q "BIND_ACCESSIBILITY_SERVICE" /tmp/manifest.txt
+          # The ads SDK reads this meta-data at startup and refuses to run
+          # without it. It lives in the rewarded module's own manifest now, so
+          # the merge is the only thing standing between us and a crash on the
+          # first tap. Checked here because it cannot be checked from a test.
+          grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt
+          grep -q "ca-app-pub-8602760833611299~1068854218" /tmp/manifest.txt
+          echo "manifest carries the AdMob app id"
+          for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
+            grep -q "$app" /tmp/manifest.txt
+          done
+          echo "manifest declares the service and the apps it may look at"
+
+          # Updating itself needs two declarations from the updater module: the
+          # permission that lets an app launch the installer, and the provider
+          # that gives the installer a readable handle on the APK. Missing
+          # either one fails at the worst moment — on the person's phone, with
+          # a download already in the cache.
+          grep -q "REQUEST_INSTALL_PACKAGES" /tmp/manifest.txt
+          grep -q "com.shaikhs.app.updater" /tmp/manifest.txt
+          grep -q "FileProvider" /tmp/manifest.txt
+          echo "manifest can install its own updates"
+
+          # The PDF engine is a local Expo module; a silent autolinking failure
+          # would ship an app whose Arena says "install the app". Look for the
+          # module class in the DEX, the same way the app loads it.
+          if unzip -p "$APK" "classes*.dex" | grep -qa "pdfarena/PdfArenaModule"; then
+            echo "PDF Arena engine is in the APK"
+          elif unzip -p "$APK" "classes*.dex" | grep -qa "com/tom_roush/pdfbox"; then
+            # A minified build may rename our class; its dependency cannot go.
+            echo "PDF Arena engine is in the APK (renamed by shrinking)"
+          else
+            echo "PDF Arena engine is MISSING from the APK" >&2
+            exit 1
+          fi
+
+          # The updater's classes may be renamed by shrinking, so this only
+          # reports. The manifest checks above are the real proof it linked: the
+          # permission and the provider come from the module's own manifest and
+          # cannot appear without it.
+          if unzip -p "$APK" "classes*.dex" | grep -qa "updater/UpdaterModule"; then
+            echo "updater is in the APK"
+          else
+            echo "updater classes renamed by shrinking (linked, per the manifest)"
+          fi
+
+          # versionCode lives in the APK, not in app.json: if the stamp did not
+          # reach the package, an update can never install over the old build.
+          BADGING="$("$AAPT2" dump badging "$APK" 2>/dev/null || true)"
+          if [ -z "$BADGING" ]; then
+            AAPT_V1="$(ls -d "$TOOLS"/*/aapt | sort -V | tail -1)"
+            BADGING="$("$AAPT_V1" dump badging "$APK")"
+          fi
+          echo "$BADGING" | grep -q "package: name='com.shaikhs.app'"
+          CODE="$(echo "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)"
+          EXPECTED="$(node -p "JSON.parse(require('fs').readFileSync('app.json', 'utf8')).expo.android.versionCode")"
+          if [ "$CODE" != "$EXPECTED" ]; then
+            echo "versionCode in the APK is '$CODE', app.json says '$EXPECTED'" >&2
+            exit 1
+          fi
+          echo "APK versionCode is $CODE"
+
+          APKSIGNER="$(ls -d "$TOOLS"/*/apksigner | sort -V | tail -1)"
+          # The signing key must be the same on every build, or an update can
+          # never install over the version already on the phone. Printing it
+          # makes a silent change impossible to miss.
+          "$APKSIGNER" verify --print-certs "$APK" | tee certs.txt
+          grep -qi "certificate SHA-256 digest" certs.txt
+
+          for apk in "$OUT"/*.apk; do
+            "$APKSIGNER" verify "$apk" > /dev/null
+            echo "signature ok: $(basename "$apk")"
+          done
+
+          sha256sum "$APK"
+
+      # Google Play Protect's enhanced fraud protection refuses to install a
+      # sideloaded app that declares an accessibility service, and Focus Mode is one.
+      # The block cannot be dismissed, so a second edition is built without the
+      # service: it installs with no security prompt at all, and Focus Mode's screen
+      # says plainly that it left it out.
+      - name: Build the edition without Focus Mode
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/apk/release
+          mkdir -p full
+          cp "$OUT"/*.apk full/
+
+          node - <<'LITE'
+          const fs = require('fs');
+
+          const path = 'android/app/src/main/AndroidManifest.xml';
+          const source = fs.readFileSync(path, 'utf8');
+
+          if (!source.includes('<application')) {
+            console.error('no <application> in the generated manifest');
+            process.exit(1);
+          }
+
+          // tools:node="remove" deletes the node the Focus Mode module contributes,
+          // whichever manifest it came from.
+          const removal =
+            '<service android:name="expo.modules.focus.FocusAccessibilityService" ' +
+            'tools:node="remove" />';
+
+          let patched = source;
+
+          if (!/xmlns:tools=/.test(patched)) {
+            patched = patched.replace('<manifest', '<manifest xmlns:tools="http://schemas.android.com/tools"');
+          }
+
+          patched = patched.replace(/(<application[^>]*>)/, `$1\n        ${removal}`);
+
+          if (!patched.includes('tools:node="remove"')) {
+            console.error('could not inject the removal');
+            process.exit(1);
+          }
+
+          fs.writeFileSync(path, patched);
+          console.log('Focus Mode accessibility service removed for this build');
+          LITE
+
+          cd android
+          ./gradlew :app:assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Pexpo.useLegacyPackaging=true \
+            --no-daemon 2>&1 | tail -20
+          cd ..
+
+          TOOLS="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+          AAPT2="$(ls -d "$TOOLS"/*/aapt2 | sort -V | tail -1)"
+
+          # The whole point of this build: the declaration must be gone.
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$OUT/app-arm64-v8a-release.apk" > lite-manifest.txt
+          if grep -q "FocusAccessibilityService" lite-manifest.txt; then
+            echo "the lite build still declares the accessibility service" >&2
+            exit 1
+          fi
+          echo "lite build declares no accessibility service"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/apk/release
+          cp full/app-universal-release.apk shaikhs.apk
+          cp full/app-arm64-v8a-release.apk shaikhs-arm64.apk
+          cp "$OUT/app-arm64-v8a-release.apk" shaikhs-arm64-lite.apk
+
+          # The 32-bit package is a convenience for old phones. Its absence must
+          # not stop the build that everyone else can install.
+          ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-arm64-lite.apk version.json"
+          if [ -f "full/app-armeabi-v7a-release.apk" ]; then
+            cp full/app-armeabi-v7a-release.apk shaikhs-32bit.apk
+            cp "$OUT/app-armeabi-v7a-release.apk" shaikhs-32bit-lite.apk
+            ASSETS="shaikhs.apk shaikhs-arm64.apk shaikhs-arm64-lite.apk shaikhs-32bit.apk shaikhs-32bit-lite.apk version.json"
+          fi
+          ls -l shaikhs*.apk
+
+          # The feed the app reads at launch. A plain file next to the APK: no
+          # API quota, no token, and one request that either answers or does not.
+          node - <<'FEED'
+          const fs = require('fs');
+
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          const version = app.expo.version;
+
+          let notes = [];
+          try {
+            const all = JSON.parse(fs.readFileSync('update-notes.json', 'utf8'));
+            notes = Array.isArray(all[version]) ? all[version].slice(0, 4) : [];
+          } catch (error) {
+            // No notes for this version is fine: the prompt says so plainly.
+          }
+
+          const crypto = require('crypto');
+          const base = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/apk`;
+
+          // Checksums are computed from the exact bytes published, so a download
+          // that arrives truncated is rejected on the phone instead of being
+          // handed to Android as a broken package.
+          const entry = (file) => ({
+            url: `${base}/${file}`,
+            size: fs.statSync(file).size,
+            sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),
+          });
+
+          const feed = {
+            version,
+            ...entry('shaikhs.apk'),
+            packages: {},
+            notes,
+            builtAt: new Date().toISOString(),
+          };
+
+          // The small package for the phone asking, per edition. The app picks
+          // the entry matching its CPU *and* the edition it is running, and
+          // falls back to the universal one only in the full edition — a lite
+          // install must never be quietly upgraded to the build with Focus Mode.
+          const perCpu = {
+            'arm64-v8a': 'shaikhs-arm64.apk',
+            'armeabi-v7a': 'shaikhs-32bit.apk',
+            'arm64-v8a-lite': 'shaikhs-arm64-lite.apk',
+            'armeabi-v7a-lite': 'shaikhs-32bit-lite.apk',
+          };
+
+          for (const [abi, file] of Object.entries(perCpu)) {
+            if (!fs.existsSync(file)) continue;
+            feed.packages[abi] = entry(file);
+          }
+
+          fs.writeFileSync('version.json', JSON.stringify(feed, null, 2));
+          console.log('published', version, feed.size, 'bytes', feed.sha256);
+          console.log('per-CPU:', Object.keys(feed.packages).join(', ') || 'universal only');
+          FEED
+
+          cat > release-notes.md <<'NOTES'
+          **Shaikh's for Android** — download `shaikhs-arm64.apk` below (or `shaikhs.apk`
+          if your phone is older than 2019) and open it on your phone.
+
+          If Android asks, allow installing from this source. Built from the latest
+          commit on this branch.
+
+          Focus Mode is here: open the app → the Focus Mode card → switch it on →
+          allow it in Settings → Accessibility. Then Reels, Shorts and the rest stay
+          closed while messages keep working.
+
+          Updating from an earlier build? This feature used to be called Regain. Android
+          ties the accessibility permission to the feature's name, so switch Focus Mode
+          on once more after the update — your chosen apps and sections come across on
+          their own.
+
+          PDF Arena is here too: the card under Focus Mode. Twenty-one tools —
+          merge, split, rotate, sign, watermark, compress, protect, convert and
+          the rest — running entirely on your phone. Nothing is uploaded.
+
+          From this version on, the app updates itself: it says when a new build
+          is out, and the Update button downloads and installs it in one tap.
+          Android asks once to allow installs from this source — allow it, and
+          every later update is a single tap.
+          NOTES
+
+          {
+            echo ""
+            echo "### If Android refuses to install it"
+            echo ""
+            echo "Focus Mode needs Android's accessibility service, and Google Play Protect blocks"
+            echo "**any** app arriving from a browser that declares one — SMS, notifications or"
+            echo "accessibility. The dialog says *\"may be used for financial fraud\"*, and it has no"
+            echo "install-anyway button. It is a rule about declared permissions, not a report on this"
+            echo "app, and it is enforced server-side."
+            echo ""
+            echo "**The way through, with Play Protect left on** (ten minutes, all on the phone):"
+            echo ""
+            echo "1. Install **Shizuku** from the Play Store (free, open source)."
+            echo "2. Settings → About phone → tap **Build number** seven times, then turn on"
+            echo "   **Wireless debugging** in Developer options."
+            echo "3. Shizuku → **Pairing** → follow the code prompt → **Start**."
+            echo "4. Install **InstallerX Revived**, set it to install through **Shizuku**, and allow"
+            echo "   it in Shizuku → Authorized apps."
+            echo "5. Download 'shaikhs-arm64.apk' here, tap it, and choose that installer instead of"
+            echo "   Android's own."
+            echo ""
+            echo "Google blocks the *browser* route; an install over ADB is not one of those sources."
+            echo ""
+            echo "**Getting \"App not installed\" instead of the dialog?** That is the same block, failing"
+            echo "silently — the file is fine, the install was refused. On a Samsung, turn off"
+            echo "Settings → Security and privacy → **Auto Blocker** first; on Xiaomi, POCO or Redmi,"
+            echo "turn off **Scan apps before install** in the Security app. If a Shaikh's is already on"
+            echo "the phone from a differently-signed build, uninstall it first. Everything else is the"
+            echo "Shizuku route above, which reports the exact error code if it still fails."
+            echo ""
+            echo "The quicker route, where it is allowed: Play Store → profile → Play Protect →"
+            echo "gear icon → turn off *Scan apps with Play Protect* → install → turn it back on."
+            echo "On some phones in India the enhanced protection survives that switch."
+            echo ""
+            echo "**The \"lite\" files** declare no accessibility service and install with no prompt"
+            echo "at all — but they have no Focus Mode at all. Both are published so a phone with no"
+            echo "way in still has the rest of the app."
+            echo ""
+            echo "Full steps: docs/INSTALL.md in this repository."
+            echo ""
+            echo "### Which file"
+            echo ""
+            echo "Nearly every phone made since 2019 is 64-bit — start with the small one:"
+            echo ""
+            echo "| File | For | Size |"
+            echo "| --- | --- | --- |"
+            echo "| **shaikhs-arm64.apk** | 64-bit phones, full app with Focus Mode | $(du -h shaikhs-arm64.apk | cut -f1) |"
+            echo "| shaikhs-32bit.apk | older 32-bit phones, full app | $(du -h shaikhs-32bit.apk | cut -f1) |"
+            echo "| **shaikhs-arm64-lite.apk** | 64-bit phones, installs with no security prompt (no Focus Mode) | $(du -h shaikhs-arm64-lite.apk | cut -f1) |"
+            echo "| shaikhs-32bit-lite.apk | 32-bit phones, same trade-off | $(du -h shaikhs-32bit-lite.apk | cut -f1) |"
+            echo "| shaikhs.apk | any phone, full app, and what the app updates itself from | $(du -h shaikhs.apk | cut -f1) |"
+            echo ""
+            echo "If a download is cut short, Android says *appears to be invalid*. Compare the"
+            echo "file against these exact figures instead of guessing:"
+            echo ""
+            echo '```'
+            for f in shaikhs-arm64.apk shaikhs-32bit.apk shaikhs-arm64-lite.apk shaikhs-32bit-lite.apk shaikhs.apk; do
+              [ -f "$f" ] || continue
+              echo "$(stat -c%s "$f") bytes  sha256 $(sha256sum "$f" | cut -d' ' -f1)  $f"
+            done
+            echo '```'
+          } >> release-notes.md
+
+          if gh release view apk >/dev/null 2>&1; then
+            gh release upload apk $ASSETS --clobber
+            gh release edit apk --title "Shaikh's — Android app" --notes-file release-notes.md
+          else
+            gh release create apk $ASSETS \
+              --title "Shaikh's — Android app" \
+              --notes-file release-notes.md
+          fi
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/download/apk/shaikhs.apk"
+
+      # The build logs cannot be fetched from outside; when something breaks,
+      # the tail is posted onto the commit so it can be read and acted on.
+      - name: Report a failure on the commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### What went wrong"
+            grep -n -A 25 "What went wrong" build.log 2>/dev/null | head -80 || true
+            echo
+            echo "### Failed tasks"
+            grep -n "> Task .* FAILED" build.log 2>/dev/null | head -40 || true
+            echo
+            echo "### Compiler errors"
+            grep -nE "^e: |^w: .*error|error:|Execution failed" build.log 2>/dev/null | head -80 || true
+            echo
+            echo "### Causes"
+            grep -n -A 6 "Caused by:" build.log 2>/dev/null | head -60 || true
+            echo
+            echo "### Tail"
+            tail -c 8000 build.log 2>/dev/null || echo "no build log"
+          } > failure.txt
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -f body="$(printf '```\n%s\n```' "$(cat failure.txt)")" || true
+
+      - name: Keep the APK as an artifact too
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaikhs-apk
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/*.apk
+            apps/mobile/full/*.apk
+          if-no-files-found: warn

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the service is allowed to observe.
+
+  - typeWindowStateChanged / typeWindowContentChanged: when the screen changes.
+  - canRetrieveWindowContent: needed to read view ids. Text is never used.
+  - flagReportViewIds: without this, view ids are null and nothing can be
+    recognised; this is the single flag the whole feature depends on.
+  - flagIncludeNotImportantViews: the container that identifies Reels is often
+    marked not important, so it would otherwise be skipped.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/focus_service_description"
+    android:notificationTimeout="100" />
