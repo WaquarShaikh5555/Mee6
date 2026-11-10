@@ -168,7 +168,7 @@ your account, with everything installed. It is free, apart from pennies of stora
 3. Paste this single line:
 
    ```bash
-   git clone -q -b arena/b0b002ad-mee6 --depth 1 https://github.com/WaquarShaikh5555/Mee6.git ~/shaikhs && cd ~/shaikhs && bash infra/deploy.sh 2>&1 | tee deploy.log
+   git clone -q -b main --depth 1 https://github.com/WaquarShaikh5555/Mee6.git ~/shaikhs && cd ~/shaikhs && bash infra/deploy.sh 2>&1 | tee deploy.log
    ```
 
 4. Wait. It creates the resource group, deploys the template, builds the server image in
