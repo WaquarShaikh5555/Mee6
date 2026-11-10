@@ -77,8 +77,16 @@ class RewardedModule : Module() {
     val context = activity.applicationContext
 
     if (!initialised) {
-      MobileAds.initialize(context) {}
-      initialised = true
+      // The SDK throws here, not later, when something is wrong with the app id
+      // or the build. Inside a catch it becomes "ad failed", which the app
+      // already treats as "unlock anyway" — never a crash.
+      try {
+        MobileAds.initialize(context) {}
+        initialised = true
+      } catch (error: Throwable) {
+        finish("failed")
+        return
+      }
     }
 
     // A load that never answers must not leave the button spinning forever.

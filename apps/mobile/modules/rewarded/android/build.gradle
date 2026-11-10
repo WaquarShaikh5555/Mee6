@@ -36,6 +36,9 @@ android {
   lintOptions {
     abortOnError false
   }
+
+  // Applied to whoever includes this module, i.e. the app.
+  consumerProguardFiles "consumer-rules.pro"
 }
 
 dependencies {

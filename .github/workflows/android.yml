@@ -162,20 +162,16 @@ jobs:
           # with nothing to switch on in Accessibility settings.
           grep -q "FocusAccessibilityService" /tmp/manifest.txt
           grep -q "BIND_ACCESSIBILITY_SERVICE" /tmp/manifest.txt
-          # Ads are excluded from the native build (see package.json →
-          # expo.autolinking.exclude). This is not a preference, it is the
-          # difference between an app that opens and one that dies on launch,
-          # four times over. If either of these ever comes back, the build stops
-          # here instead of on someone's phone.
+          # The ads SDK's startup provider must NOT be in the package. That
+          # provider runs before the first screen, so when it fails the app
+          # closes with nothing to look at — which is exactly what 0.12.0 did.
+          # The SDK is initialised by our own module on first tap instead.
           if grep -q "MobileAdsInitProvider" /tmp/manifest.txt; then
-            echo "the ads SDK's startup provider is back in the manifest" >&2
+            echo "the ads SDK's startup provider is in the manifest — remove it" >&2
             exit 1
           fi
-          if grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt; then
-            echo "the ads SDK's app id meta-data is back in the manifest" >&2
-            exit 1
-          fi
-          echo "no ads SDK in the build"
+          grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt
+          echo "ads SDK present, startup provider removed, app id set"
           for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
             grep -q "$app" /tmp/manifest.txt
           done
@@ -242,16 +238,20 @@ jobs:
             echo "signature ok: $(basename "$apk")"
           done
 
-          # Dex-level check: the SDK's classes must not be in the package either.
-          # A manifest-only check could be satisfied by a provider registered
-          # somewhere else; the classes cannot hide.
+          # The SDK's own keep rules, applied by our module, have to survive into
+          # the release build. R8 stripping these classes is the other known way
+          # this SDK turns into a launch crash on a real phone and never in a
+          # test; a missing class here means the rules did not reach the app.
           for dex in $(unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'); do
-            if unzip -p "$APK" "$dex" | grep -aq "com/google/android/gms/ads"; then
-              echo "the Google Mobile Ads SDK is in $dex — that build crashes on launch" >&2
-              exit 1
+            if unzip -p "$APK" "$dex" | grep -aq "com/google/android/gms/ads/MobileAds"; then
+              FOUND_ADS=1
             fi
           done
-          echo "no ads SDK classes in the package"
+          if [ "${FOUND_ADS:-0}" != "1" ]; then
+            echo "the ads SDK is missing from the package — ads would never load" >&2
+            exit 1
+          fi
+          echo "ads SDK classes present and not stripped"
 
           sha256sum "$APK"
 

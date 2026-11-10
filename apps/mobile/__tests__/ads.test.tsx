@@ -370,12 +370,22 @@ describe('what actually ships', () => {
   // until we know why it kills the process, and the way that is guaranteed is
   // exclusion at autolinking — plus this test, so re-enabling it cannot be an
   // accident of editing one line.
-  it('leaves the rewarded module out of the native build', () => {
-    const pkg = JSON.parse(read('package.json')) as {
-      expo?: { autolinking?: { exclude?: string[] } };
-    };
+  it('keeps the ad SDK out of the app\'s startup', () => {
+    const manifest = read('modules/rewarded/android/src/main/AndroidManifest.xml');
 
-    expect(pkg.expo?.autolinking?.exclude).toContain('rewarded');
+    // The SDK's own provider runs before the first screen. Removed, so the SDK
+    // is only ever initialised by us, on a tap, inside a try/catch.
+    expect(manifest).toMatch(/MobileAdsInitProvider/);
+    expect(manifest).toMatch(/tools:node="remove"/);
+  });
+
+  it('keeps the SDK\'s classes safe from R8', () => {
+    const rules = read('modules/rewarded/android/consumer-rules.pro');
+
+    // A release build without these strips classes the SDK reaches
+    // reflectively — the crash lands on a phone, never in a test.
+    expect(rules).toMatch(/-keep class com\.google\.android\.gms\.ads/);
+    expect(rules).toMatch(/-keep class com\.google\.android\.gms\.internal\.ads/);
   });
 
   it('ships a crash handler that runs before every other provider', () => {
