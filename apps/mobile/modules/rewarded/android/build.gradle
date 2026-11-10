@@ -22,6 +22,10 @@ android {
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
+
+    // Applied to whoever includes this module, i.e. the app. `defaultConfig`
+    // is where AGP defines this — at the `android` level it fails the build.
+    consumerProguardFiles "consumer-rules.pro"
   }
 
   compileOptions {
@@ -37,8 +41,6 @@ android {
     abortOnError false
   }
 
-  // Applied to whoever includes this module, i.e. the app.
-  consumerProguardFiles "consumer-rules.pro"
 }
 
 dependencies {
