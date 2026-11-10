@@ -127,54 +127,65 @@ behaviour for a browser preview: a gate with nothing behind it would be a lie.
 `__tests__/ads.test.tsx` pins both halves of the shim, so the web bundle cannot
 regress into importing the native package again.
 
-## Our own module, not a React Native package (0.12.0)
+## Where ads stand (0.12.1)
 
-`react-native-google-mobile-ads` is gone. It is not vendored, not patched, not
-lazily imported — it is uninstalled. Three builds died proving why: importing it
-registers a Fabric view component, and an unlinked or mismatched native side
-turns that registration into a process death, not a catchable exception.
+**Ads are out of the native build.** Every build that contained a Google Mobile
+Ads SDK — 0.10.0, 0.11.0 and 0.12.0, three different integrations including our
+own wrapper — was killed by it at startup. Builds without it (0.9.5, 0.11.2)
+open and work. That is the whole of what is known for certain, and it is enough
+to stop shipping the SDK while the cause is found.
 
-`modules/rewarded` is a small Expo module that calls Google's SDK directly:
+The exclusion is deliberate and tested:
 
-```gradle
-implementation "com.google.android.gms:play-services-ads:25.5.0"
+```json
+// package.json
+"expo": { "autolinking": { "exclude": ["rewarded"] } }
 ```
 
+The `rewarded` module stays in the repository, complete and covered by tests; it
+is simply not compiled into the app. `src/ads/rewarded.ts` looks it up at
+runtime, finds nothing, and reports "no ads" — so the gate never draws, every
+tool is free, and no screen has to know.
+
+CI now **fails the build** if the SDK comes back by either route:
+
+- `MobileAdsInitProvider` or `com.google.android.gms.ads.APPLICATION_ID` in the
+  merged manifest;
+- `com/google/android/gms/ads` anywhere in `classes*.dex`.
+
+A manifest-only check can be satisfied by a provider registered elsewhere; the
+classes cannot hide.
+
+### The diagnostic loop (why the next attempt will be different)
+
+Guessing from a symptom has cost four builds. `modules/diagnostics` now records
+the actual reason and leaves it somewhere a phone can reach:
+
 ```
-src/ads/rewarded.ts  →  requireOptionalNativeModule('RewardedAds')
-                     →  show(unitId)  →  "earned" | "closed" | "failed" | "unavailable"
+Downloads/shaikhs-crash-20261103-142210.txt
+files/last-crash.txt          (for a future "last crash" screen)
 ```
 
-Why this cannot repeat the crash:
+It is a `ContentProvider` with `initOrder="2147483647"`, so it is created before
+every other provider — including an SDK's startup provider — which is the only
+way a handler can be in place in time to catch a failure during launch. It
+records and then calls the previous handler, so Android still treats the
+exception as a crash.
 
-- **Nothing is registered at import time.** Expo modules are discovered by the
-  Expo runtime at startup, not by evaluating a JS import.
-- **No Fabric component.** We only ever show a rewarded ad, which is a native
-  activity the SDK owns. No banner view, so no view manager, so nothing for the
-  React renderer to look up and fail on.
-- **One function.** `Name("RewardedAds")` with a single `AsyncFunction("show")`.
-  The smaller the surface, the smaller the blast radius.
-- **It is optional at runtime.** `requireOptionalNativeModule` returns null in a
-  build without it (web preview, Expo Go), and the app behaves as it always has
-  there: no ads, no gate, every tool free.
+With that in place the loop is: install a build with ads enabled → if it dies,
+the reason is already in Downloads → the fix is based on a stack trace rather
+than a description.
 
-The AdMob app id moved with the plugin that used to inject it: it now lives in
-`modules/rewarded/android/src/main/AndroidManifest.xml`, and a test compares it
-against `AD_APP_ID` in `src/ads/config.ts`, because a mismatch kills the app
-before a single screen can explain itself.
+### What the next attempt looks like
 
-### The brake
+Not another blind retry. When ads return, they return like this:
 
-`ADS_PAUSED` in `src/ads/config.ts` is the emergency switch. True means "ask for
-nothing, grant everything" — it is what 0.11.2 shipped while the crash was being
-chased, and it stays because a one-word change is a better answer to a bad build
-than a revert and a rebuild.
-
-### What is not done yet
-
-Ad requests currently carry no personalisation signals and no consent flag. That
-is fine for India, and it is deliberately not "personalised". Before distributing
-in the EEA or UK, Google's UMP consent SDK has to be added — `npa` extras in the
-request — and this section updated with it. Until then: no personalised ads, no
-consent dialog needed, and no user identifiers sent by us.
+1. **The SDK's startup provider removed** (`tools:node="remove"`), so nothing
+   from Google runs at process start. Initialisation happens on the first tap,
+   inside a `try`/`catch` — a failure there is `failed`, which the app already
+   treats as "grant the 48 hours anyway".
+2. **One variable per build.** No feature, no rename and no SDK change in the
+   same APK as a crash fix.
+3. **The crash reporter on**, so a failure produces a file instead of a
+   description.
 

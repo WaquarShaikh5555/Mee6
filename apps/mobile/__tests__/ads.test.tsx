@@ -362,3 +362,41 @@ describe('the brake', () => {
     expect(brake).toBeLessThan(call);
   });
 });
+
+describe('what actually ships', () => {
+  const read = (file: string) => readFileSync(join(__dirname, '..', file), 'utf8');
+
+  // Four builds died learning this. The ad SDK cannot be in the native build
+  // until we know why it kills the process, and the way that is guaranteed is
+  // exclusion at autolinking — plus this test, so re-enabling it cannot be an
+  // accident of editing one line.
+  it('leaves the rewarded module out of the native build', () => {
+    const pkg = JSON.parse(read('package.json')) as {
+      expo?: { autolinking?: { exclude?: string[] } };
+    };
+
+    expect(pkg.expo?.autolinking?.exclude).toContain('rewarded');
+  });
+
+  it('ships a crash handler that runs before every other provider', () => {
+    const manifest = read('modules/diagnostics/android/src/main/AndroidManifest.xml');
+
+    // Highest initOrder wins, and it is what puts a recorder in place before
+    // an SDK's own startup provider can throw.
+    expect(manifest).toMatch(/CrashLogProvider/);
+    expect(manifest).toMatch(/initOrder="2147483647"/);
+    expect(manifest).toMatch(/exported="false"/);
+  });
+
+  it('writes the crash somewhere a phone can send from', () => {
+    const source = read(
+      'modules/diagnostics/android/src/main/java/expo/modules/diagnostics/CrashLogProvider.kt',
+    );
+
+    // Downloads is the only folder the person can reach without a PC.
+    expect(source).toMatch(/MediaStore\.Downloads/);
+    expect(source).toMatch(/shaikhs-crash-/);
+    // And the original handler still runs, so it stays a crash.
+    expect(source).toMatch(/previous\?\.uncaughtException/);
+  });
+});
