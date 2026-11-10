@@ -17,7 +17,7 @@ import {
   liveWindow,
   type Entitlement,
 } from './entitlement';
-import { adsAvailable, showRewarded, type WatchResult } from './rewarded';
+import { adsAvailable, showRewarded, type WatchReason, type WatchResult } from './rewarded';
 
 type Snapshot = {
   /** Still reading storage, so nothing should blink. */
@@ -82,6 +82,7 @@ export function useUnlock() {
   const [state, setState] = useState<Snapshot>(snapshot);
   const [watching, setWatching] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [reason, setReason] = useState<WatchReason>(null);
 
   useEffect(() => {
     const listener = () => setState(snapshot());
@@ -100,7 +101,8 @@ export function useUnlock() {
     setProblem(null);
 
     try {
-      const result = await showRewarded();
+      const { result, reason: why } = await showRewarded();
+      setReason(why);
 
       if (result === 'closed') {
         setProblem('Closed before the end, so nothing changed. The button is here whenever you want it.');
@@ -113,7 +115,22 @@ export function useUnlock() {
       await refreshUnlock();
 
       if (result !== 'earned') {
-        setProblem('No ad could be shown just now — unlocked anyway. That is on us, not you.');
+        // Say what happened rather than "something went wrong": the code is
+        // the difference between "AdMob has nothing for us yet" and "the app
+        // is broken", and only one of those is worth a support message.
+        const code = why?.code;
+        const detail =
+          code === 'NO_FILL'
+            ? 'AdMob has no ad to serve for this app yet.'
+            : code === 'INVALID_REQUEST'
+              ? 'AdMob rejected the request — the ad unit is probably not a Rewarded one.'
+              : code === 'INIT_FAILED'
+                ? 'The ad library did not start.'
+                : code
+                  ? `AdMob said ${code}.`
+                  : 'The ad did not arrive.';
+
+        setProblem(`No ad could be shown — ${detail} Unlocked anyway, for 48 hours.`);
       }
 
       return result;
@@ -128,6 +145,8 @@ export function useUnlock() {
     ads: adsAvailable(),
     watching,
     problem,
+    /** The platform's reason, for anyone who asks or reports a problem. */
+    reason,
     unlock,
   };
 }

@@ -198,22 +198,22 @@ describe('the free / Pro split', () => {
 describe('the ad itself', () => {
   it('reports having no SDK rather than throwing', () => {
     expect(adsAvailable()).toBe(false);
-    return expect(showRewarded()).resolves.toBe('unavailable');
+    return expect(showRewarded()).resolves.toEqual({ result: 'unavailable', reason: null });
   });
 
   it('earns the reward when the ad is watched through', async () => {
     __setAdsForTests(fakeAds('earned'));
-    await expect(showRewarded()).resolves.toBe('earned');
+    await expect(showRewarded()).resolves.toEqual({ result: 'earned', reason: null });
   });
 
   it('does not reward an ad closed early', async () => {
     __setAdsForTests(fakeAds('closed'));
-    await expect(showRewarded()).resolves.toBe('closed');
+    await expect(showRewarded()).resolves.toEqual({ result: 'closed', reason: null });
   });
 
   it('reports a failure instead of hanging when there is no fill', async () => {
     __setAdsForTests(fakeAds('failed'));
-    await expect(showRewarded()).resolves.toBe('failed');
+    await expect(showRewarded()).resolves.toEqual({ result: 'failed', reason: null });
   });
 });
 
@@ -266,9 +266,15 @@ describe('the card', () => {
       await fireEvent.press(screen.getByText('Watch an ad — 48 hours free'));
     });
 
-    expect(onUnlocked).toHaveBeenCalled();
+    // The window opens regardless — that behaviour is unchanged.
     const window = await currentEntitlement();
     expect(window?.reason).toBe('grace');
+
+    // But the card does not vanish. A tap that produces no ad and no visible
+    // change read as a broken button, so the card stays and explains itself.
+    expect(onUnlocked).not.toHaveBeenCalled();
+    expect(screen.getByText('Unlocked')).toBeTruthy();
+    expect(screen.getByText(/Unlocked anyway, for 48 hours/)).toBeTruthy();
   });
 
   it('changes nothing when the ad is closed early', async () => {
@@ -356,7 +362,7 @@ describe('the brake', () => {
     // not around it.
     const source = readFileSync(join(__dirname, '..', 'src', 'ads', 'rewarded.ts'), 'utf8');
     const brake = source.indexOf('if (ADS_PAUSED) return');
-    const call = source.indexOf('await ads.show(');
+    const call = source.indexOf('await ads.show(REWARDED_UNIT_ID)');
 
     expect(brake).toBeGreaterThan(-1);
     expect(brake).toBeLessThan(call);

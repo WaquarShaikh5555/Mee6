@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { showTestAd } from '@/ads/rewarded';
 import { useFocus } from '@/focus/FocusProvider';
 import { getEnforcementStatus, getLastSighting, type EnforcementStatus, type Sighting } from '@/focus/enforcement';
 import { FOCUS_APPS } from '@/focus/catalog';
@@ -32,6 +33,8 @@ export default function DeveloperScreen() {
 
   const [enforcement, setEnforcement] = useState<EnforcementStatus | null>(null);
   const [sighting, setSighting] = useState<Sighting | null>(null);
+  /** What the last test ad did, in words, so it can be read at a glance. */
+  const [adCheck, setAdCheck] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [status, last] = await Promise.all([getEnforcementStatus(), getLastSighting()]);
@@ -177,6 +180,28 @@ export default function DeveloperScreen() {
           variant="secondary"
           onPress={() => void refresh()}
         />
+        {/* The one question that cannot be answered by guessing: does an ad
+            load at all? Google's test unit always has one to serve, so a
+            failure here is the code and a success here is AdMob's inventory. */}
+        <Button
+          label="Play a test ad"
+          variant="secondary"
+          onPress={() => {
+            setAdCheck('Loading…');
+            void showTestAd().then(({ result, reason }) => {
+              setAdCheck(
+                result === 'earned' || result === 'closed'
+                  ? 'The ad code works. Any silence from the real unit is AdMob having no inventory.'
+                  : `Nothing played — ${reason?.code ?? result}. ${reason?.message ?? ''}`.trim(),
+              );
+            });
+          }}
+        />
+        {adCheck ? (
+          <Text variant="footnote" tone="tertiary">
+            {adCheck}
+          </Text>
+        ) : null}
         <Button
           label="Report what Focus Mode saw"
           onPress={() => void Linking.openURL(reportUrl)}

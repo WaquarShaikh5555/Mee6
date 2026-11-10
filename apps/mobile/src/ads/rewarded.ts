@@ -18,7 +18,7 @@
  * simply has no ads.
  */
 
-import { ADS_PAUSED, REWARDED_UNIT_ID } from './config';
+import { ADS_PAUSED, REWARDED_UNIT_ID, TEST_REWARDED_UNIT_ID } from './config';
 
 export type WatchResult =
   /** The person watched it through and the reward was granted. */
@@ -31,8 +31,19 @@ export type WatchResult =
   | 'unavailable';
 
 type NativeRewarded = {
-  show: (unitId: string) => Promise<{ outcome?: string } | null>;
+  show: (
+    unitId: string,
+  ) => Promise<{ outcome?: string; code?: string; message?: string } | null>;
 };
+
+/**
+ * Why an ad did not appear, when the platform knows.
+ *
+ * `NO_FILL` is the ordinary answer — AdMob has nothing to serve for this app
+ * yet, which is normal for a new unit and more common for a sideloaded install.
+ * `INVALID_REQUEST` usually means the unit id is not a rewarded unit.
+ */
+export type WatchReason = { code: string; message: string } | null;
 
 let override: NativeRewarded | null | undefined;
 
@@ -94,17 +105,49 @@ const OUTCOMES: WatchResult[] = ['earned', 'closed', 'failed', 'unavailable'];
  *    "watch to unlock" button that does nothing — which is the single most
  *    frustrating thing a rewarded-ad app can do.
  */
-export async function showRewarded(): Promise<WatchResult> {
-  if (ADS_PAUSED) return 'unavailable';
-
+/**
+ * Plays Google's guaranteed test ad.
+ *
+ * Deliberately not part of the unlock flow: it pays nothing and must never be
+ * what a customer sees. It exists to answer one question definitively — if a
+ * test ad appears, the integration works and any silence from the real unit is
+ * AdMob having no inventory to serve.
+ */
+export async function showTestAd(): Promise<{ result: WatchResult; reason: WatchReason }> {
   const ads = nativeModule();
-  if (!ads) return 'unavailable';
+  if (!ads) return { result: 'unavailable', reason: null };
 
   try {
-    const result = await ads.show(REWARDED_UNIT_ID);
-    const outcome = result?.outcome;
-    return OUTCOMES.includes(outcome as WatchResult) ? (outcome as WatchResult) : 'failed';
+    const answer = await ads.show(TEST_REWARDED_UNIT_ID);
+    const outcome = answer?.outcome;
+
+    return {
+      result: OUTCOMES.includes(outcome as WatchResult) ? (outcome as WatchResult) : 'failed',
+      reason: answer?.code ? { code: answer.code, message: answer.message ?? '' } : null,
+    };
   } catch {
-    return 'failed';
+    return { result: 'failed', reason: null };
+  }
+}
+
+export async function showRewarded(): Promise<{ result: WatchResult; reason: WatchReason }> {
+  if (ADS_PAUSED) return { result: 'unavailable', reason: null };
+
+  const ads = nativeModule();
+  if (!ads) return { result: 'unavailable', reason: null };
+
+  try {
+    const answer = await ads.show(REWARDED_UNIT_ID);
+    const outcome = answer?.outcome;
+
+    return {
+      result: OUTCOMES.includes(outcome as WatchResult) ? (outcome as WatchResult) : 'failed',
+      reason:
+        answer?.code
+          ? { code: answer.code, message: answer.message ?? '' }
+          : null,
+    };
+  } catch {
+    return { result: 'failed', reason: null };
   }
 }
