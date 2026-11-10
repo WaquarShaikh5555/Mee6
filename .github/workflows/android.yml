@@ -92,6 +92,35 @@ jobs:
           set -o pipefail
           npx expo prebuild --platform android --no-install --clean 2>&1 | tee build.log
 
+      # The crash of 0.13.0, in one line: R8 removed Room's generated
+      # WorkDatabase_Impl, which WorkManager creates reflectively during
+      # startup, and the process died before a window existed. Room, Hilt and
+      # WorkManager all do that reflection; R8 cannot see it.
+      #
+      # Shrinking is therefore off for release builds. It saved perhaps 8 MB
+      # and cost four evenings — and the size that matters to the person
+      # installing is the CPU split, not the shrinker.
+      - name: Stop the release build from shrinking code
+        run: |
+          set -euo pipefail
+          sed -i 's/^android.enableMinifyInReleaseBuilds=.*/android.enableMinifyInReleaseBuilds=false/' android/gradle.properties
+          sed -i 's/^android.enableShrinkResourcesInReleaseBuilds=.*/android.enableShrinkResourcesInReleaseBuilds=false/' android/gradle.properties
+          grep -q '^android.enableMinifyInReleaseBuilds=false' android/gradle.properties
+
+          # Kept for the day shrinking comes back: these are the classes R8
+          # removed. Room and WorkManager instantiate them reflectively, so no
+          # amount of static analysis can see the use.
+          cat >> android/app/proguard-rules.pro <<'RULES'
+
+          -keep class androidx.work.impl.WorkDatabase_Impl { *; }
+          -keep class * extends androidx.room.RoomDatabase { *; }
+          -keep class androidx.room.RoomMasterTable { *; }
+          -keep class androidx.room.RoomOpenHelper { *; }
+          -keep class androidx.sqlite.db.framework.** { *; }
+          RULES
+
+          echo "release builds are no longer minified"
+
       # One APK per CPU type, plus a universal one. A phone downloading 30 MB
       # instead of 60 MB is the difference between an install that survives a
       # mobile connection and one that arrives truncated — and a truncated
@@ -252,6 +281,21 @@ jobs:
             exit 1
           fi
           echo "ads SDK classes present and not stripped"
+
+          # The 0.13.0 crash, asserted against: WorkManager creates this class
+          # reflectively during startup. If it is not in the package by name,
+          # something shrank it again and the app will die before its first
+          # screen — exactly the failure this build exists to end.
+          for dex in $(unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'); do
+            if unzip -p "$APK" "$dex" | grep -aq "androidx/work/impl/WorkDatabase_Impl"; then
+              FOUND_WORK=1
+            fi
+          done
+          if [ "${FOUND_WORK:-0}" != "1" ]; then
+            echo "WorkDatabase_Impl is missing — WorkManager will crash at startup" >&2
+            exit 1
+          fi
+          echo "WorkManager's database survives the build"
 
           sha256sum "$APK"
 

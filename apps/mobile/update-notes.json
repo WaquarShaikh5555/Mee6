@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.13.1": [
+    "Fixes the crash on opening. The build was shrinking code and cutting out a piece the app needs at startup.",
+    "Ads stay on: one ad opens the 11 extra PDF tools for 48 hours, everyday tools stay free.",
+    "If an ad can't load you get the 48 hours anyway."
+  ],
   "0.13.0": [
     "Ads are back — one ad opens the 11 extra PDF tools for 48 hours.",
     "The everyday tools stay free, and nothing is ever locked behind a banner.",

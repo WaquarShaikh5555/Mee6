@@ -127,65 +127,50 @@ behaviour for a browser preview: a gate with nothing behind it would be a lie.
 `__tests__/ads.test.tsx` pins both halves of the shim, so the web bundle cannot
 regress into importing the native package again.
 
-## Where ads stand (0.12.1)
+## The crash, found (0.13.1)
 
-**Ads are out of the native build.** Every build that contained a Google Mobile
-Ads SDK — 0.10.0, 0.11.0 and 0.12.0, three different integrations including our
-own wrapper — was killed by it at startup. Builds without it (0.9.5, 0.11.2)
-open and work. That is the whole of what is known for certain, and it is enough
-to stop shipping the SDK while the cause is found.
-
-The exclusion is deliberate and tested:
-
-```json
-// package.json
-"expo": { "autolinking": { "exclude": ["rewarded"] } }
-```
-
-The `rewarded` module stays in the repository, complete and covered by tests; it
-is simply not compiled into the app. `src/ads/rewarded.ts` looks it up at
-runtime, finds nothing, and reports "no ads" — so the gate never draws, every
-tool is free, and no screen has to know.
-
-CI now **fails the build** if the SDK comes back by either route:
-
-- `MobileAdsInitProvider` or `com.google.android.gms.ads.APPLICATION_ID` in the
-  merged manifest;
-- `com/google/android/gms/ads` anywhere in `classes*.dex`.
-
-A manifest-only check can be satisfied by a provider registered elsewhere; the
-classes cannot hide.
-
-### The diagnostic loop (why the next attempt will be different)
-
-Guessing from a symptom has cost four builds. `modules/diagnostics` now records
-the actual reason and leaves it somewhere a phone can reach:
+For three builds the assumption was that the ads SDK was at fault. The crash
+file from 0.13.0 says otherwise:
 
 ```
-Downloads/shaikhs-crash-20261103-142210.txt
-files/last-crash.txt          (for a future "last crash" screen)
+java.lang.RuntimeException: Unable to get provider androidx.startup.InitializationProvider:
+  java.lang.RuntimeException: Failed to create an instance of androidx.work.impl.WorkDatabase
+    at androidx.work.WorkManagerInitializer.b(...)
 ```
 
-It is a `ContentProvider` with `initOrder="2147483647"`, so it is created before
-every other provider — including an SDK's startup provider — which is the only
-way a handler can be in place in time to catch a failure during launch. It
-records and then calls the previous handler, so Android still treats the
-exception as a crash.
+**WorkManager — pulled in transitively by the ads SDK — was trying to open a
+database during startup, and the code shrinker had removed the class Room
+generates for it.** Room and WorkManager instantiate their implementation
+classes reflectively, so R8 cannot see the use and removes them; the call then
+fails at whatever moment it happens, which for WorkManager is *before the first
+activity exists*. No window, no error, just the app closing.
 
-With that in place the loop is: install a build with ads enabled → if it dies,
-the reason is already in Downloads → the fix is based on a stack trace rather
-than a description.
+That explains every build in this saga except the ones with no ads at all:
 
-### What the next attempt looks like
+| Build | Ads SDK | Shrinking | Result |
+| --- | --- | --- | --- |
+| 0.9.5 | no | on | opens |
+| 0.10.0 / 0.11.0 / 0.12.0 | yes | on | dies at launch |
+| 0.11.2 / 0.12.1 | no | on | opens |
+| **0.13.1** | **yes** | **off** | **the test** |
 
-Not another blind retry. When ads return, they return like this:
+The SDK itself was never the problem. The shrinker was — it just had nothing to
+break until an SDK brought Room and WorkManager along.
 
-1. **The SDK's startup provider removed** (`tools:node="remove"`), so nothing
-   from Google runs at process start. Initialisation happens on the first tap,
-   inside a `try`/`catch` — a failure there is `failed`, which the app already
-   treats as "grant the 48 hours anyway".
-2. **One variable per build.** No feature, no rename and no SDK change in the
-   same APK as a crash fix.
-3. **The crash reporter on**, so a failure produces a file instead of a
-   description.
+### The fix
+
+1. **Release builds no longer shrink.** `android.enableMinifyInReleaseBuilds=false`
+   and `enableShrinkResourcesInReleaseBuilds=false`, set in the build after
+   `expo prebuild` generates the project. It costs a few MB and removes a whole
+   category of failure that cannot be reproduced in a test, because the failure
+   only exists in the minified build.
+2. **Keep rules for the day shrinking returns**: `WorkDatabase_Impl`, every
+   `RoomDatabase` subclass, `RoomMasterTable`, `RoomOpenHelper` and the SQLite
+   framework package, appended to the app's ProGuard file by the same step.
+3. **The build asserts it.** CI now unzips the finished APK and fails unless
+   `androidx/work/impl/WorkDatabase_Impl` is present in a dex by name. A future
+   change that re-enables shrinking cannot ship silently.
+4. **The ads SDK's startup provider stays removed**, from 0.13.0 — that one was
+   a real hazard even though it turned out not to be this crash, and the SDK is
+   initialised on first tap inside a `try`/`catch` anyway.
 
