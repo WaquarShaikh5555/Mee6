@@ -5,6 +5,8 @@ import { Linking, Platform, Share, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { showTestAd } from '@/ads/rewarded';
+import { forgetUnlock } from '@/ads/entitlement';
+import { refreshUnlock } from '@/ads/useUnlock';
 import { useFocus } from '@/focus/FocusProvider';
 import { getEnforcementStatus, getLastSighting, type EnforcementStatus, type Sighting } from '@/focus/enforcement';
 import { FOCUS_APPS } from '@/focus/catalog';
@@ -212,6 +214,18 @@ export default function DeveloperScreen() {
           onPress={() => void Share.share({ message: diagnostics })}
         />
         <Button label="Restore default rules" variant="ghost" onPress={resetRules} />
+
+        {/* Testing the gate is impossible while it is already unlocked, and
+            that is most of the time. This puts it back so the Pro screens and
+            the ad flow can be seen again. */}
+        <Button
+          label="Reset the 48-hour unlock"
+          variant="ghost"
+          onPress={() => {
+            void forgetUnlock().then(() => refreshUnlock());
+            setAdCheck('Unlock cleared. Open a Pro tool to see the ad card again.');
+          }}
+        />
       </View>
 
       <View style={{ paddingTop: theme.space['2xl'], gap: theme.space.xs }}>

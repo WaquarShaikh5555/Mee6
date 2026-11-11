@@ -19,6 +19,9 @@ import {
 } from './entitlement';
 import { adsAvailable, showRewarded, type WatchReason, type WatchResult } from './rewarded';
 
+/** Long enough for a slow connection, short enough that nobody waits forever. */
+const WATCH_TIMEOUT_MS = 20_000;
+
 type Snapshot = {
   /** Still reading storage, so nothing should blink. */
   loading: boolean;
@@ -101,7 +104,19 @@ export function useUnlock() {
     setProblem(null);
 
     try {
-      const { result, reason: why } = await showRewarded();
+      // A native call that never answers must not leave a disabled button on
+      // screen. After this long, treat it exactly like a failed ad: grant the
+      // window and say so. The worst case becomes "it took 20 seconds", never
+      // "the button is dead".
+      const { result, reason: why } = await Promise.race([
+        showRewarded(),
+        new Promise<{ result: WatchResult; reason: WatchReason }>((resolve) =>
+          setTimeout(
+            () => resolve({ result: 'failed', reason: { code: 'NO_ANSWER', message: '' } }),
+            WATCH_TIMEOUT_MS,
+          ),
+        ),
+      ]);
       setReason(why);
 
       if (result === 'closed') {

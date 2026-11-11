@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.13.3": [
+    "The ad button can no longer get stuck: after 20 seconds the tools open anyway.",
+    "Owner screen: a reset for the 48-hour unlock, so the ad card can be tested again.",
+    "Nothing else changed."
+  ],
   "0.13.2": [
     "Watching an ad now actually waits for the ad library to start, instead of racing it.",
     "If no ad can be shown, the card says why and opens the tools for 48 hours anyway.",

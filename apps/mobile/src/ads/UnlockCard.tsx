@@ -131,12 +131,18 @@ export function UnlockCard({
 
       <View style={{ gap: theme.space.sm }}>
         <Button
-          label={watching ? 'Loading the ad…' : `Watch an ad — ${UNLOCK_HOURS} hours free`}
+          label={watching ? 'Getting the ad…' : `Watch an ad — ${UNLOCK_HOURS} hours free`}
           icon={watching ? undefined : 'play-circle-outline'}
           loading={watching}
           onPress={() => void watch()}
           disabled={watching}
         />
+
+        {watching ? (
+          <Text variant="caption" tone="tertiary" align="center">
+            If no ad arrives within 20 seconds, the tools open anyway.
+          </Text>
+        ) : null}
 
         <Button label="Not now" variant="secondary" onPress={onClose} disabled={watching} />
       </View>
