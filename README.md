@@ -4,7 +4,7 @@ An Android app for two jobs: **stop the endless scroll**, and **do real work on 
 
 Built with Expo, React Native and TypeScript. Accounts and profiles live in Supabase.
 
-[**Download the app →**](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-arm64.apk) · 46 MB · Android 8+ · [install help](docs/INSTALL.md)
+[**Download the app →**](https://github.com/WaquarShaikh5555/Mee6/releases/download/apk/shaikhs-arm64.apk) · 46 MB, 64-bit · [install help](docs/INSTALL.md)
 
 ---
 
