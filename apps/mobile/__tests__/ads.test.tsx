@@ -198,22 +198,22 @@ describe('the free / Pro split', () => {
 describe('the ad itself', () => {
   it('reports having no SDK rather than throwing', () => {
     expect(adsAvailable()).toBe(false);
-    return expect(showRewarded()).resolves.toBe('unavailable');
+    return expect(showRewarded()).resolves.toEqual({ result: 'unavailable', reason: null });
   });
 
   it('earns the reward when the ad is watched through', async () => {
     __setAdsForTests(fakeAds('earned'));
-    await expect(showRewarded()).resolves.toBe('earned');
+    await expect(showRewarded()).resolves.toEqual({ result: 'earned', reason: null });
   });
 
   it('does not reward an ad closed early', async () => {
     __setAdsForTests(fakeAds('closed'));
-    await expect(showRewarded()).resolves.toBe('closed');
+    await expect(showRewarded()).resolves.toEqual({ result: 'closed', reason: null });
   });
 
   it('reports a failure instead of hanging when there is no fill', async () => {
     __setAdsForTests(fakeAds('failed'));
-    await expect(showRewarded()).resolves.toBe('failed');
+    await expect(showRewarded()).resolves.toEqual({ result: 'failed', reason: null });
   });
 });
 
@@ -266,9 +266,15 @@ describe('the card', () => {
       await fireEvent.press(screen.getByText('Watch an ad — 48 hours free'));
     });
 
-    expect(onUnlocked).toHaveBeenCalled();
+    // The window opens regardless — that behaviour is unchanged.
     const window = await currentEntitlement();
     expect(window?.reason).toBe('grace');
+
+    // But the card does not vanish. A tap that produces no ad and no visible
+    // change read as a broken button, so the card stays and explains itself.
+    expect(onUnlocked).not.toHaveBeenCalled();
+    expect(screen.getByText('Unlocked')).toBeTruthy();
+    expect(screen.getByText(/Unlocked anyway, for 48 hours/)).toBeTruthy();
   });
 
   it('changes nothing when the ad is closed early', async () => {
@@ -356,9 +362,57 @@ describe('the brake', () => {
     // not around it.
     const source = readFileSync(join(__dirname, '..', 'src', 'ads', 'rewarded.ts'), 'utf8');
     const brake = source.indexOf('if (ADS_PAUSED) return');
-    const call = source.indexOf('await ads.show(');
+    const call = source.indexOf('await ads.show(REWARDED_UNIT_ID)');
 
     expect(brake).toBeGreaterThan(-1);
     expect(brake).toBeLessThan(call);
+  });
+});
+
+describe('what actually ships', () => {
+  const read = (file: string) => readFileSync(join(__dirname, '..', file), 'utf8');
+
+  // Four builds died learning this. The ad SDK cannot be in the native build
+  // until we know why it kills the process, and the way that is guaranteed is
+  // exclusion at autolinking — plus this test, so re-enabling it cannot be an
+  // accident of editing one line.
+  it('keeps the ad SDK out of the app\'s startup', () => {
+    const manifest = read('modules/rewarded/android/src/main/AndroidManifest.xml');
+
+    // The SDK's own provider runs before the first screen. Removed, so the SDK
+    // is only ever initialised by us, on a tap, inside a try/catch.
+    expect(manifest).toMatch(/MobileAdsInitProvider/);
+    expect(manifest).toMatch(/tools:node="remove"/);
+  });
+
+  it('keeps the SDK\'s classes safe from R8', () => {
+    const rules = read('modules/rewarded/android/consumer-rules.pro');
+
+    // A release build without these strips classes the SDK reaches
+    // reflectively — the crash lands on a phone, never in a test.
+    expect(rules).toMatch(/-keep class com\.google\.android\.gms\.ads/);
+    expect(rules).toMatch(/-keep class com\.google\.android\.gms\.internal\.ads/);
+  });
+
+  it('ships a crash handler that runs before every other provider', () => {
+    const manifest = read('modules/diagnostics/android/src/main/AndroidManifest.xml');
+
+    // Highest initOrder wins, and it is what puts a recorder in place before
+    // an SDK's own startup provider can throw.
+    expect(manifest).toMatch(/CrashLogProvider/);
+    expect(manifest).toMatch(/initOrder="2147483647"/);
+    expect(manifest).toMatch(/exported="false"/);
+  });
+
+  it('writes the crash somewhere a phone can send from', () => {
+    const source = read(
+      'modules/diagnostics/android/src/main/java/expo/modules/diagnostics/CrashLogProvider.kt',
+    );
+
+    // Downloads is the only folder the person can reach without a PC.
+    expect(source).toMatch(/MediaStore\.Downloads/);
+    expect(source).toMatch(/shaikhs-crash-/);
+    // And the original handler still runs, so it stays a crash.
+    expect(source).toMatch(/previous\?\.uncaughtException/);
   });
 });

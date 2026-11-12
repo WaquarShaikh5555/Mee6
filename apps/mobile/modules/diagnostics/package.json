@@ -1,0 +1,7 @@
+{
+  "name": "diagnostics",
+  "version": "0.1.0",
+  "description": "Writes the reason for a crash to Downloads, so it can be read without a PC",
+  "main": "index.ts",
+  "private": true
+}

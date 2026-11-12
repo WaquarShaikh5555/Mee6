@@ -43,11 +43,15 @@ None of these let someone read another person's account, but they are the honest
 
 ## Data access
 
-The only table is `public.profiles`. Row-level security is **on**, with two policies:
+There are two tables: `public.profiles` (one row per account) and `public.admin_audit`
+(every change made from the owner console). Row-level security is **on** for both:
 
 ```sql
-profiles_select_own : auth.uid() = id     -- SELECT
-profiles_update_own : auth.uid() = id     -- UPDATE
+profiles_select_own : auth.uid() = id                       -- SELECT
+profiles_update_own : auth.uid() = id and not is_blocked    -- UPDATE
+admin_audit         : no policies at all                    -- readable only through a
+                                                               security-definer function
+                                                               that checks is_admin
 ```
 
 There is no insert policy (rows are created by a trigger on `auth.users`) and no delete
@@ -64,6 +68,29 @@ grant update (display_name, updated_at) on public.profiles to authenticated;
 Verified live: `has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE')`
 returns **false**, while `display_name` returns true. An account cannot promote itself, and
 the app has no endpoint that could.
+
+Behind the grants there is a second wall: a `before update` trigger restores every protected
+column (`is_admin`, `is_blocked`, `pro_until`, `email`, `last_seen_at`, `id`, `created_at`)
+from `OLD` unless the statement comes from one of the console functions, which set a
+transaction-local flag the client cannot set for itself. If a future migration ever widens
+the grants, that trigger still holds.
+
+### The owner console
+
+`people` in the app is the whole console: the account list with Pro / paused / owner state,
+the four actions (grant or revoke Pro, pause or restore, make or remove an owner) and the
+audit trail, on the phone.
+
+Authority is never the screen. Each call goes to a `security definer` function —
+`admin_list_users`, `admin_overview`, `admin_set_access`, `admin_recent_actions` — that
+re-reads `is_admin` from `profiles` for `auth.uid()` and raises `not_authorised` otherwise.
+Verified live: an ordinary account calling `admin_overview()` receives
+`ERROR 42501: not_authorised`, and `admin_set_access()` refuses to let an owner pause,
+demote or revoke Pro from **themselves**, or remove the **last** owner.
+
+Blocking is honest about its reach: the app signs a paused account out at launch and at
+sign-in, using a server answer (`my_access()`), not a local flag. Their documents were
+always stored on their own phone, so nothing of theirs is deleted or held hostage.
 
 ---
 

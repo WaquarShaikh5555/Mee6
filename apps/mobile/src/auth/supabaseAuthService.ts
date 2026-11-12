@@ -60,15 +60,49 @@ async function withRole(client: SupabaseClient, user: User): Promise<AuthUser> {
   try {
     const { data, error } = await client
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, is_blocked, pro_until')
       .eq('id', user.id)
       .maybeSingle();
 
     if (error || !data) return base;
-    return { ...base, isAdmin: (data as { is_admin?: boolean | null }).is_admin === true };
+
+    const row = data as {
+      is_admin?: boolean | null;
+      is_blocked?: boolean | null;
+      pro_until?: string | null;
+    };
+
+    return {
+      ...base,
+      isAdmin: row.is_admin === true,
+      blocked: row.is_blocked === true,
+      proUntil: row.pro_until ?? null,
+    };
   } catch {
     return base;
   }
+}
+
+/**
+ * Tells a rejected session apart from a server we could not reach.
+ *
+ * The difference matters: `getUser()` fails both ways, and treating the second
+ * as the first signs people out whenever their train enters a tunnel. Only an
+ * explicit rejection (401/403/404, or an invalid/expired token) clears the
+ * stored session; a transport failure keeps it and fails closed on roles.
+ */
+function isRejectedSession(error: unknown): boolean {
+  const shaped = error as { status?: number; name?: string; message?: string } | null;
+  if (!shaped) return false;
+
+  if (shaped.name === 'AuthRetryableFetchError') return false;
+  if (shaped.status === 0) return false;
+  if (shaped.status === 401 || shaped.status === 403 || shaped.status === 404) return true;
+
+  const message = shaped.message ?? '';
+  if (/network|fetch|offline|timeout|timed out/i.test(message)) return false;
+
+  return /invalid|expired|not found|jwt|token|session/i.test(message);
 }
 
 function toAuthUser(user: User): AuthUser {
@@ -189,6 +223,17 @@ export const supabaseAuthService: AuthService = {
     const { data: userData, error: userError } = await client.auth.getUser();
 
     if (userError || !userData.user) {
+      if (!isRejectedSession(userError)) {
+        // Offline, or the server is briefly unreachable. Keep the session the
+        // device already has, with no role: failing closed is safer than a
+        // sign-out that looks like the account was deleted.
+        return {
+          token: data.session.access_token,
+          user: toAuthUser(data.session.user),
+          expiresAt: new Date((data.session.expires_at ?? 0) * 1000).toISOString(),
+        };
+      }
+
       await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
       return null;
     }

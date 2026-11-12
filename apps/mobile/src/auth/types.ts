@@ -17,6 +17,13 @@ export type AuthUser = {
    * clients are not permitted to write. Absent means an ordinary account.
    */
   isAdmin?: boolean;
+  /**
+   * True when an owner has paused this account. Set by the database, never by
+   * the device; the app signs out rather than showing a broken half-session.
+   */
+  blocked?: boolean;
+  /** Server-granted Pro window (owner console). ISO timestamp, or null. */
+  proUntil?: string | null;
 };
 
 export type Session = {

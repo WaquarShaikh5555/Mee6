@@ -64,6 +64,13 @@ export function getSupabaseClient(): SupabaseClient {
     );
   }
 
+  // Access tokens travel in a header, so a plain-http URL would put them on the
+  // wire in the clear. A misconfigured build fails here instead of leaking; the
+  // loopback exceptions exist only for a developer running the stack locally.
+  if (!/^https:\/\//i.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d+)?$/i.test(url)) {
+    throw new Error('EXPO_PUBLIC_SUPABASE_URL must use https:// — refusing to send tokens in clear text.');
+  }
+
   client = createClient(url, key, {
     auth: {
       storage: secureStorageAdapter,

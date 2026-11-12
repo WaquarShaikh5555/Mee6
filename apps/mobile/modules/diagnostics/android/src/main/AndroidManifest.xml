@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      A provider runs before any activity — and, thanks to the highest
+      initOrder, before every other provider, including any an SDK brings with
+      it. That is the only place a crash handler can be installed early enough
+      to catch a failure during startup.
+
+      Nothing is exposed: authority is private to the app, exported="false".
+    -->
+    <provider
+      android:name="expo.modules.diagnostics.CrashLogProvider"
+      android:authorities="${applicationId}.crashlog"
+      android:exported="false"
+      android:initOrder="2147483647" />
+  </application>
+</manifest>

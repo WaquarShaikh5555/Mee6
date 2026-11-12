@@ -185,6 +185,19 @@ describe('restore', () => {
     expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
+  it('keeps a valid session when the server cannot be reached', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: SESSION }, error: null });
+    mockAuth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 0, message: 'Failed to fetch' },
+    });
+
+    const restored = await supabaseAuthService.restore();
+
+    expect(restored?.token).toBe('access-token');
+    expect(mockAuth.signOut).not.toHaveBeenCalled();
+  });
+
   it('falls back to the email prefix when no display name was set', async () => {
     mockAuth.getSession.mockResolvedValue({
       data: { session: { ...SESSION, user: { ...USER, user_metadata: {} } } },

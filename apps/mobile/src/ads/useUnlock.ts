@@ -17,7 +17,11 @@ import {
   liveWindow,
   type Entitlement,
 } from './entitlement';
-import { adsAvailable, showRewarded, type WatchResult } from './rewarded';
+import { adsAvailable, showRewarded, type WatchReason, type WatchResult } from './rewarded';
+import { serverProUntil } from './serverPro';
+
+/** Long enough for a slow connection, short enough that nobody waits forever. */
+const WATCH_TIMEOUT_MS = 20_000;
 
 type Snapshot = {
   /** Still reading storage, so nothing should blink. */
@@ -47,11 +51,18 @@ function snapshot(): Snapshot {
   // A gate with no way through it would be worse than no gate.
   const free = !adsAvailable();
 
+  // Pro granted from the owner console. This is server truth, refreshed on
+  // sign-in and revoked the moment the session ends, so it takes precedence
+  // over nothing and is simply another way the window can be open.
+  const granted = serverProUntil();
+  const ownerPro = granted !== null && granted > now;
+  const until = live?.until ?? (ownerPro ? granted : null);
+
   return {
     loading: !ready,
-    until: live?.until ?? null,
-    unlocked: live !== null || free,
-    left: live ? describeTimeLeft(live.until, now) : null,
+    until,
+    unlocked: until !== null || free,
+    left: until !== null ? describeTimeLeft(until, now) : null,
   };
 }
 
@@ -82,6 +93,7 @@ export function useUnlock() {
   const [state, setState] = useState<Snapshot>(snapshot);
   const [watching, setWatching] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [reason, setReason] = useState<WatchReason>(null);
 
   useEffect(() => {
     const listener = () => setState(snapshot());
@@ -100,7 +112,20 @@ export function useUnlock() {
     setProblem(null);
 
     try {
-      const result = await showRewarded();
+      // A native call that never answers must not leave a disabled button on
+      // screen. After this long, treat it exactly like a failed ad: grant the
+      // window and say so. The worst case becomes "it took 20 seconds", never
+      // "the button is dead".
+      const { result, reason: why } = await Promise.race([
+        showRewarded(),
+        new Promise<{ result: WatchResult; reason: WatchReason }>((resolve) =>
+          setTimeout(
+            () => resolve({ result: 'failed', reason: { code: 'NO_ANSWER', message: '' } }),
+            WATCH_TIMEOUT_MS,
+          ),
+        ),
+      ]);
+      setReason(why);
 
       if (result === 'closed') {
         setProblem('Closed before the end, so nothing changed. The button is here whenever you want it.');
@@ -113,7 +138,22 @@ export function useUnlock() {
       await refreshUnlock();
 
       if (result !== 'earned') {
-        setProblem('No ad could be shown just now — unlocked anyway. That is on us, not you.');
+        // Say what happened rather than "something went wrong": the code is
+        // the difference between "AdMob has nothing for us yet" and "the app
+        // is broken", and only one of those is worth a support message.
+        const code = why?.code;
+        const detail =
+          code === 'NO_FILL'
+            ? 'AdMob has no ad to serve for this app yet.'
+            : code === 'INVALID_REQUEST'
+              ? 'AdMob rejected the request — the ad unit is probably not a Rewarded one.'
+              : code === 'INIT_FAILED'
+                ? 'The ad library did not start.'
+                : code
+                  ? `AdMob said ${code}.`
+                  : 'The ad did not arrive.';
+
+        setProblem(`No ad could be shown — ${detail} Unlocked anyway, for 48 hours.`);
       }
 
       return result;
@@ -128,6 +168,8 @@ export function useUnlock() {
     ads: adsAvailable(),
     watching,
     problem,
+    /** The platform's reason, for anyone who asks or reports a problem. */
+    reason,
     unlock,
   };
 }

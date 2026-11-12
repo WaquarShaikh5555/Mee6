@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
   <application>
     <!--
       The Google Mobile Ads SDK reads this at process start and throws if it is
@@ -12,5 +13,19 @@
     <meta-data
       android:name="com.google.android.gms.ads.APPLICATION_ID"
       android:value="ca-app-pub-8602760833611299~1068854218" />
+
+    <!--
+      The SDK's own startup provider. It is created by Android before any
+      activity, which means its failure mode is "the app closes before the
+      first screen" — exactly what 0.12.0 did, and not something a phone can
+      report. Removed here so the SDK is only ever initialised by us, inside a
+      try/catch, on the first tap.
+    -->
+    <provider
+      android:name="com.google.android.gms.ads.MobileAdsInitProvider"
+      android:authorities="${applicationId}.mobileadsinitprovider"
+      android:exported="false"
+      android:initOrder="100"
+      tools:node="remove" />
   </application>
 </manifest>

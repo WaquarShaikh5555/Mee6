@@ -1,5 +1,35 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.14.0": [
+    "An owner console, in the app: every account, Pro access, pausing someone, and a record of every change.",
+    "Every button answers on the first touch now — spring presses, content that arrives, segments that slide.",
+    "Four new colours — sage, plum, clay and lagoon — so the app is no longer just teal and beige."
+  ],
+  "0.13.3": [
+    "The ad button can no longer get stuck: after 20 seconds the tools open anyway.",
+    "Owner screen: a reset for the 48-hour unlock, so the ad card can be tested again.",
+    "Nothing else changed."
+  ],
+  "0.13.2": [
+    "Watching an ad now actually waits for the ad library to start, instead of racing it.",
+    "If no ad can be shown, the card says why and opens the tools for 48 hours anyway.",
+    "Owner screen: a new button plays Google's test ad, to prove the code works."
+  ],
+  "0.13.1": [
+    "Fixes the crash on opening. The build was shrinking code and cutting out a piece the app needs at startup.",
+    "Ads stay on: one ad opens the 11 extra PDF tools for 48 hours, everyday tools stay free.",
+    "If an ad can't load you get the 48 hours anyway."
+  ],
+  "0.13.0": [
+    "Ads are back — one ad opens the 11 extra PDF tools for 48 hours.",
+    "The everyday tools stay free, and nothing is ever locked behind a banner.",
+    "If an ad can't load, you get the 48 hours anyway."
+  ],
+  "0.12.1": [
+    "The app opens again. The ad code is out of this build completely — that is what was closing it.",
+    "Every tool works, and every tool is free while ads are off.",
+    "If it ever crashes, a report is saved to your Downloads folder so it can be fixed properly."
+  ],
   "0.12.0": [
     "The app stops closing. Ads now come from a small module of our own instead of the library that crashed it.",
     "Ads are back on: one ad opens the 11 extra PDF tools for 48 hours, and the everyday tools stay free.",

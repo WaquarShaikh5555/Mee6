@@ -22,6 +22,7 @@ export default function AppLayout() {
       <Stack.Screen name="design" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="developer" />
+      <Stack.Screen name="people" />
       <Stack.Screen name="pdf/index" />
       <Stack.Screen name="pdf/[toolId]" />
       {/* A viewer is a place you enter and leave, not a page in the stack. */}

@@ -1,9 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { showTestAd } from '@/ads/rewarded';
+import { forgetUnlock } from '@/ads/entitlement';
+import { refreshUnlock } from '@/ads/useUnlock';
 import { useFocus } from '@/focus/FocusProvider';
 import { getEnforcementStatus, getLastSighting, type EnforcementStatus, type Sighting } from '@/focus/enforcement';
 import { FOCUS_APPS } from '@/focus/catalog';
@@ -27,11 +31,14 @@ import { useTheme } from '@/theme/ThemeProvider';
  */
 export default function DeveloperScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { user } = useAuth();
   const { state, enabled, blockedSectionCount, todayCount, resetRules } = useFocus();
 
   const [enforcement, setEnforcement] = useState<EnforcementStatus | null>(null);
   const [sighting, setSighting] = useState<Sighting | null>(null);
+  /** What the last test ad did, in words, so it can be read at a glance. */
+  const [adCheck, setAdCheck] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [status, last] = await Promise.all([getEnforcementStatus(), getLastSighting()]);
@@ -101,8 +108,13 @@ export default function DeveloperScreen() {
           <Badge label="Admin" tone="brass" />
         </View>
         <Text variant="footnote" tone="secondary">
-          Granted by the database, not by the app. Nobody can promote themselves here.
+          Owner access is granted by the database, never by the app. Account changes happen on the
+          People screen, and every one of them is recorded.
         </Text>
+      </View>
+
+      <View style={{ paddingBottom: theme.space.lg }}>
+        <Button label="Open People" onPress={() => router.push('/people')} />
       </View>
 
       <Card style={{ gap: theme.space.sm }}>
@@ -177,6 +189,28 @@ export default function DeveloperScreen() {
           variant="secondary"
           onPress={() => void refresh()}
         />
+        {/* The one question that cannot be answered by guessing: does an ad
+            load at all? Google's test unit always has one to serve, so a
+            failure here is the code and a success here is AdMob's inventory. */}
+        <Button
+          label="Play a test ad"
+          variant="secondary"
+          onPress={() => {
+            setAdCheck('Loading…');
+            void showTestAd().then(({ result, reason }) => {
+              setAdCheck(
+                result === 'earned' || result === 'closed'
+                  ? 'The ad code works. Any silence from the real unit is AdMob having no inventory.'
+                  : `Nothing played — ${reason?.code ?? result}. ${reason?.message ?? ''}`.trim(),
+              );
+            });
+          }}
+        />
+        {adCheck ? (
+          <Text variant="footnote" tone="tertiary">
+            {adCheck}
+          </Text>
+        ) : null}
         <Button
           label="Report what Focus Mode saw"
           onPress={() => void Linking.openURL(reportUrl)}
@@ -187,14 +221,26 @@ export default function DeveloperScreen() {
           onPress={() => void Share.share({ message: diagnostics })}
         />
         <Button label="Restore default rules" variant="ghost" onPress={resetRules} />
+
+        {/* Testing the gate is impossible while it is already unlocked, and
+            that is most of the time. This puts it back so the Pro screens and
+            the ad flow can be seen again. */}
+        <Button
+          label="Reset the 48-hour unlock"
+          variant="ghost"
+          onPress={() => {
+            void forgetUnlock().then(() => refreshUnlock());
+            setAdCheck('Unlock cleared. Open a Pro tool to see the ad card again.');
+          }}
+        />
       </View>
 
       <View style={{ paddingTop: theme.space['2xl'], gap: theme.space.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
           <Ionicons name="information-circle-outline" size={16} color={theme.colors.textTertiary} />
           <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
-            Adding another owner is a database change, deliberately: there is no in-app path that
-            could be abused to grant it.
+            Adding another owner, granting Pro and pausing an account all live on the People
+            screen. The database checks who is asking before it changes anything.
           </Text>
         </View>
       </View>

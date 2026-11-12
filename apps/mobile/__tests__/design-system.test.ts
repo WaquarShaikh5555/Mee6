@@ -85,6 +85,24 @@ describe.each(['light', 'dark'] as const)('%s theme accessibility', (scheme) => 
     },
   );
 
+  it.each(['sage', 'plum', 'clay', 'lagoon'] as const)(
+    '%s text is legible as a label and on its own wash',
+    (family) => {
+      expect(contrastRatio(colors[family], colors.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(colors[family], colors[`${family}Subtle` as keyof typeof colors] as string),
+      ).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it.each(['Edit', 'Optimise', 'Secure', 'Convert'] as const)(
+    'the %s category ink reads on its wash',
+    (category) => {
+      const tone = theme.categories[category];
+      expect(contrastRatio(tone.ink, tone.wash)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
   it('separators are visible without shouting', () => {
     const ratio = contrastRatio(colors.separator, colors.canvas);
     expect(ratio).toBeGreaterThanOrEqual(1.2);

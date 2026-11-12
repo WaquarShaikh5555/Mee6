@@ -40,9 +40,12 @@ export function UnlockCard({
 
   const watch = async () => {
     const result = await unlock();
-    // `closed` means nothing changed; leave the card up so the button is still
-    // there. Everything else — including "no ad available" — unlocked.
-    if (result !== 'closed') onUnlocked?.();
+
+    // Only a watched ad closes the card by itself. When no ad could be shown,
+    // the card stays up and switches to its "unlocked anyway" state, which
+    // says why — otherwise a tap that produces no ad and no visible change
+    // reads as a broken button, even though the tool opened.
+    if (result === 'earned') onUnlocked?.();
   };
 
   if (unlocked && left) {
@@ -56,6 +59,12 @@ export function UnlockCard({
         <Text variant="callout" tone="secondary">
           Every Pro tool is open until the window runs out — {left}. Nothing to do now.
         </Text>
+
+        {problem ? (
+          <Text variant="footnote" tone="accent">
+            {problem}
+          </Text>
+        ) : null}
 
         <Button label={`Back to ${toolName}`} onPress={onClose} />
       </View>
@@ -122,12 +131,18 @@ export function UnlockCard({
 
       <View style={{ gap: theme.space.sm }}>
         <Button
-          label={watching ? 'Loading the ad…' : `Watch an ad — ${UNLOCK_HOURS} hours free`}
+          label={watching ? 'Getting the ad…' : `Watch an ad — ${UNLOCK_HOURS} hours free`}
           icon={watching ? undefined : 'play-circle-outline'}
           loading={watching}
           onPress={() => void watch()}
           disabled={watching}
         />
+
+        {watching ? (
+          <Text variant="caption" tone="tertiary" align="center">
+            If no ad arrives within 20 seconds, the tools open anyway.
+          </Text>
+        ) : null}
 
         <Button label="Not now" variant="secondary" onPress={onClose} disabled={watching} />
       </View>

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { Card } from '@/ui/Card';
+import { FadeIn, STAGGER_MS } from '@/ui/motion';
 import { Screen } from '@/ui/Screen';
 import { ScreenHeader } from '@/ui/ScreenHeader';
 import { Text } from '@/ui/Text';
@@ -33,19 +34,23 @@ export default function PdfArenaScreen() {
     <Screen>
       <ScreenHeader title="PDF Arena" />
 
-      <View style={{ gap: theme.space.sm, paddingTop: theme.space.lg, paddingBottom: theme.space.xl }}>
-        <Text variant="display" serif>
-          PDF Arena
-        </Text>
-        <Text variant="body" tone="secondary">
-          {PDF_TOOLS.length} tools that work on the file in your hand. No account, no queue, no
-          upload — the document never leaves this phone.
-        </Text>
-      </View>
+      <FadeIn offset={8}>
+        <View style={{ gap: theme.space.sm, paddingTop: theme.space.lg, paddingBottom: theme.space.xl }}>
+          <Text variant="display" serif>
+            PDF Arena
+          </Text>
+          <Text variant="body" tone="secondary">
+            {PDF_TOOLS.length} tools that work on the file in your hand. No account, no queue, no
+            upload — the document never leaves this phone.
+          </Text>
+        </View>
+      </FadeIn>
 
-      <View style={{ paddingBottom: theme.space.lg }}>
-        <ProNote />
-      </View>
+      <FadeIn offset={8} delay={STAGGER_MS}>
+        <View style={{ paddingBottom: theme.space.lg }}>
+          <ProNote />
+        </View>
+      </FadeIn>
 
       {!engine ? (
         <View style={{ paddingBottom: theme.space.lg }}>
@@ -124,17 +129,39 @@ export default function PdfArenaScreen() {
         </View>
       ) : (
         <View>
-          {CATEGORIES.map((category) => {
+          {CATEGORIES.map((category, index) => {
             const tools = toolsIn(category.id);
+            const tone = theme.categories[category.id];
 
             return (
-              <View key={category.id} style={{ paddingTop: theme.space.xl, gap: theme.space.md }}>
-                <View style={{ gap: 2 }}>
+              <FadeIn
+                key={category.id}
+                offset={12}
+                delay={STAGGER_MS * (index + 2)}
+                style={{ paddingTop: theme.space.xl, gap: theme.space.md }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
+                  <View
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: tone.ink,
+                    }}
+                  />
                   <Text variant="title3">{category.id}</Text>
-                  <Text variant="footnote" tone="tertiary">
-                    {category.blurb}
-                  </Text>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      backgroundColor: tone.edge,
+                      marginLeft: theme.space.xs,
+                    }}
+                  />
                 </View>
+                <Text variant="footnote" tone="tertiary">
+                  {category.blurb}
+                </Text>
 
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.md }}>
                   {tools.map((tool) => (
@@ -145,7 +172,7 @@ export default function PdfArenaScreen() {
                     />
                   ))}
                 </View>
-              </View>
+              </FadeIn>
             );
           })}
         </View>

@@ -22,6 +22,15 @@ export const AD_APP_ID: string = 'ca-app-pub-8602760833611299~1068854218';
 /** AdMob → Ad units → the rewarded unit. Only rewarded format, by design. */
 export const REWARDED_UNIT_ID: string = 'ca-app-pub-8602760833611299/7902302989';
 
+/**
+ * Google's rewarded test unit.
+ *
+ * Serves a real, watchable ad to any device and pays nothing. Kept for one
+ * purpose: telling "AdMob has no inventory for us yet" apart from "the ad code
+ * is broken". If this plays, the integration is fine and the answer is fill.
+ */
+export const TEST_REWARDED_UNIT_ID = 'ca-app-pub-3940256099942544/5224354917';
+
 /** Google's sample units, kept only to recognise them. */
 const SAMPLE_APP_ID: string = 'ca-app-pub-3940256099942544~3347511713';
 const SAMPLE_REWARDED_UNIT_ID: string = 'ca-app-pub-3940256099942544/5224354917';

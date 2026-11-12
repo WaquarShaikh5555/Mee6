@@ -12,7 +12,7 @@ name: Android app
 
 on:
   push:
-    branches: [arena/b0b002ad-mee6]
+    branches: [arena/f5e31138-mee6, main]
     paths:
       - 'apps/mobile/**'
       - '.github/workflows/android.yml'
@@ -92,6 +92,35 @@ jobs:
           set -o pipefail
           npx expo prebuild --platform android --no-install --clean 2>&1 | tee build.log
 
+      # The crash of 0.13.0, in one line: R8 removed Room's generated
+      # WorkDatabase_Impl, which WorkManager creates reflectively during
+      # startup, and the process died before a window existed. Room, Hilt and
+      # WorkManager all do that reflection; R8 cannot see it.
+      #
+      # Shrinking is therefore off for release builds. It saved perhaps 8 MB
+      # and cost four evenings — and the size that matters to the person
+      # installing is the CPU split, not the shrinker.
+      - name: Stop the release build from shrinking code
+        run: |
+          set -euo pipefail
+          sed -i 's/^android.enableMinifyInReleaseBuilds=.*/android.enableMinifyInReleaseBuilds=false/' android/gradle.properties
+          sed -i 's/^android.enableShrinkResourcesInReleaseBuilds=.*/android.enableShrinkResourcesInReleaseBuilds=false/' android/gradle.properties
+          grep -q '^android.enableMinifyInReleaseBuilds=false' android/gradle.properties
+
+          # Kept for the day shrinking comes back: these are the classes R8
+          # removed. Room and WorkManager instantiate them reflectively, so no
+          # amount of static analysis can see the use.
+          cat >> android/app/proguard-rules.pro <<'RULES'
+
+          -keep class androidx.work.impl.WorkDatabase_Impl { *; }
+          -keep class * extends androidx.room.RoomDatabase { *; }
+          -keep class androidx.room.RoomMasterTable { *; }
+          -keep class androidx.room.RoomOpenHelper { *; }
+          -keep class androidx.sqlite.db.framework.** { *; }
+          RULES
+
+          echo "release builds are no longer minified"
+
       # One APK per CPU type, plus a universal one. A phone downloading 30 MB
       # instead of 60 MB is the difference between an install that survives a
       # mobile connection and one that arrives truncated — and a truncated
@@ -162,13 +191,16 @@ jobs:
           # with nothing to switch on in Accessibility settings.
           grep -q "FocusAccessibilityService" /tmp/manifest.txt
           grep -q "BIND_ACCESSIBILITY_SERVICE" /tmp/manifest.txt
-          # The ads SDK reads this meta-data at startup and refuses to run
-          # without it. It lives in the rewarded module's own manifest now, so
-          # the merge is the only thing standing between us and a crash on the
-          # first tap. Checked here because it cannot be checked from a test.
+          # The ads SDK's startup provider must NOT be in the package. That
+          # provider runs before the first screen, so when it fails the app
+          # closes with nothing to look at — which is exactly what 0.12.0 did.
+          # The SDK is initialised by our own module on first tap instead.
+          if grep -q "MobileAdsInitProvider" /tmp/manifest.txt; then
+            echo "the ads SDK's startup provider is in the manifest — remove it" >&2
+            exit 1
+          fi
           grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt
-          grep -q "ca-app-pub-8602760833611299~1068854218" /tmp/manifest.txt
-          echo "manifest carries the AdMob app id"
+          echo "ads SDK present, startup provider removed, app id set"
           for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
             grep -q "$app" /tmp/manifest.txt
           done
@@ -234,6 +266,36 @@ jobs:
             "$APKSIGNER" verify "$apk" > /dev/null
             echo "signature ok: $(basename "$apk")"
           done
+
+          # The SDK's own keep rules, applied by our module, have to survive into
+          # the release build. R8 stripping these classes is the other known way
+          # this SDK turns into a launch crash on a real phone and never in a
+          # test; a missing class here means the rules did not reach the app.
+          for dex in $(unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'); do
+            if unzip -p "$APK" "$dex" | grep -aq "com/google/android/gms/ads/MobileAds"; then
+              FOUND_ADS=1
+            fi
+          done
+          if [ "${FOUND_ADS:-0}" != "1" ]; then
+            echo "the ads SDK is missing from the package — ads would never load" >&2
+            exit 1
+          fi
+          echo "ads SDK classes present and not stripped"
+
+          # The 0.13.0 crash, asserted against: WorkManager creates this class
+          # reflectively during startup. If it is not in the package by name,
+          # something shrank it again and the app will die before its first
+          # screen — exactly the failure this build exists to end.
+          for dex in $(unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'); do
+            if unzip -p "$APK" "$dex" | grep -aq "androidx/work/impl/WorkDatabase_Impl"; then
+              FOUND_WORK=1
+            fi
+          done
+          if [ "${FOUND_WORK:-0}" != "1" ]; then
+            echo "WorkDatabase_Impl is missing — WorkManager will crash at startup" >&2
+            exit 1
+          fi
+          echo "WorkManager's database survives the build"
 
           sha256sum "$APK"
 

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
 
 import { Button } from '@/ui/Button';
+import { usePressScale } from '@/ui/motion';
 import { Text } from '@/ui/Text';
 import { TextField } from '@/ui/TextField';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -60,6 +61,7 @@ export function FileCard({
 }: FileCardProps) {
   const theme = useTheme();
   const [password, setPassword] = useState('');
+  const press = usePressScale(0.982, Boolean(file));
 
   if (!file) {
     return (
@@ -70,41 +72,45 @@ export function FileCard({
           </Text>
         ) : null}
 
-        <Pressable
-          onPress={onChoose}
-          accessibilityRole="button"
-          accessibilityLabel={emptyHint}
-          style={({ pressed }) => ({
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: theme.space.sm,
-            paddingVertical: theme.space['2xl'],
-            paddingHorizontal: theme.space.lg,
-            borderRadius: theme.radius.lg,
-            borderWidth: 1.5,
-            borderStyle: 'dashed',
-            borderColor: pressed ? theme.colors.accent : theme.colors.border,
-            backgroundColor: pressed ? theme.colors.accentSubtle : theme.colors.surface,
-          })}
-        >
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: theme.radius.full,
+        <Animated.View style={press.scaleStyle}>
+          <Pressable
+            onPress={onChoose}
+            onPressIn={press.onPressIn}
+            onPressOut={press.onPressOut}
+            accessibilityRole="button"
+            accessibilityLabel={emptyHint}
+            style={({ pressed }) => ({
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: theme.colors.accentSubtle,
-            }}
+              gap: theme.space.sm,
+              paddingVertical: theme.space['2xl'],
+              paddingHorizontal: theme.space.lg,
+              borderRadius: theme.radius.lg,
+              borderWidth: 1.5,
+              borderStyle: 'dashed',
+              borderColor: pressed ? theme.colors.accent : theme.colors.border,
+              backgroundColor: pressed ? theme.colors.accentSubtle : theme.colors.surface,
+            })}
           >
-            <Ionicons name="add" size={24} color={theme.colors.onAccentSubtle} />
-          </View>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: theme.radius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.accentSubtle,
+              }}
+            >
+              <Ionicons name="add" size={24} color={theme.colors.onAccentSubtle} />
+            </View>
 
-          <Text variant="headline">{emptyHint}</Text>
-          <Text variant="footnote" tone="tertiary" align="center">
-            Stays on this phone. Nothing is uploaded.
-          </Text>
-        </Pressable>
+            <Text variant="headline">{emptyHint}</Text>
+            <Text variant="footnote" tone="tertiary" align="center">
+              Stays on this phone. Nothing is uploaded.
+            </Text>
+          </Pressable>
+        </Animated.View>
       </View>
     );
   }

@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
 
+import { tapFeedback } from '@/lib/haptics';
 import { useTheme } from '@/theme/ThemeProvider';
+import { usePressScale } from './motion';
 import type { TextProps } from './Text';
 import { Text } from './Text';
 
@@ -32,6 +34,7 @@ export function ListRow({
 }: ListRowProps) {
   const theme = useTheme();
   const interactive = Boolean(onPress);
+  const press = usePressScale(0.985, !interactive);
 
   const content = (
     <View
@@ -93,13 +96,22 @@ export function ListRow({
   if (!interactive) return content;
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
-      style={({ pressed }) => ({ backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent' })}
-    >
-      {content}
-    </Pressable>
+    <Animated.View style={press.scaleStyle}>
+      <Pressable
+        onPress={() => {
+          tapFeedback();
+          onPress?.();
+        }}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent',
+        })}
+      >
+        {content}
+      </Pressable>
+    </Animated.View>
   );
 }

@@ -25,15 +25,41 @@ resets. The app never sees or stores a password.
 profiles
   id            uuid, primary key, references auth.users(id) on delete cascade
   display_name  text, 1–80 characters
+  email         text, captured at sign-up (shown only to owners)
+  is_admin      boolean, owner access — clients cannot write it
+  is_blocked    boolean, paused accounts are signed out at launch
+  pro_until     timestamptz, Pro granted from the owner console
+  last_seen_at  timestamptz, throttled heartbeat
+  note          text, reserved
   created_at    timestamptz
   updated_at    timestamptz, maintained by trigger
+
+admin_audit
+  id, actor_id, actor_email, target_id, target_email, action, detail jsonb, created_at
 ```
 
 A database trigger creates a profile row the moment an account is created, seeded with the
 name typed at sign-up. Rows are readable and editable **only by their owner** — enforced by
-the database, not by the app, so a modified client gains nothing.
+the database, not by the app, so a modified client gains nothing. Only `display_name` is
+writable by a client; everything else moves through the owner functions.
 
-The schema is version-controlled in [`supabase/migrations/0001_profiles.sql`](../supabase/migrations/0001_profiles.sql).
+The schema is version-controlled in
+[`supabase/migrations/0001_profiles.sql`](../supabase/migrations/0001_profiles.sql) and
+[`0002_admin.sql`](../supabase/migrations/0002_admin.sql), both applied to the live project.
+
+### The owner console
+
+Settings → Owner → **People**. It lists every account with its state (owner, Pro until a
+date, paused, last seen), and offers four actions: give 30 days of Pro, remove Pro, pause or
+restore an account, and make or remove an owner. Every action is recorded in `admin_audit`
+and shown at the bottom of the same screen.
+
+The rules that cannot be broken from the app, because Postgres enforces them:
+
+- an ordinary account calling any owner function gets `not_authorised`;
+- an owner cannot pause, demote, or remove Pro from themselves;
+- the last owner cannot be removed;
+- nothing is authorised by hiding a button — the app only decides what to show.
 
 **Auth settings applied**
 

@@ -9,12 +9,16 @@ import type { ViewStyle } from 'react-native';
 
 import {
   brass,
+  clay,
   fontFamily,
   ink,
+  lagoon,
   motion,
   parchment,
   peacock,
+  plum,
   radius,
+  sage,
   space,
   status,
   touchTarget,
@@ -66,11 +70,38 @@ export type ThemeColors = {
   scrim: string;
   /** Keyboard focus and pressed outlines. */
   focusRing: string;
+
+  /* ------------------------------------------------------- new roles --- */
+
+  /** A wash of the accent, for headers and hero surfaces. Fades to canvas. */
+  accentWash: string;
+  /** A wash of brass, for premium surfaces. */
+  brassWash: string;
+  /** Stronger than `border`, for a control that must not disappear. */
+  borderStrong: string;
+  /** Text and fill for the sage family (healthy, complete). */
+  sage: string;
+  sageSubtle: string;
+  onSageSubtle: string;
+  /** Plum: locking, privacy, secrets. */
+  plum: string;
+  plumSubtle: string;
+  onPlumSubtle: string;
+  /** Clay: warmth and Convert. */
+  clay: string;
+  claySubtle: string;
+  onClaySubtle: string;
+  /** Lagoon: information and background watching. */
+  lagoon: string;
+  lagoonSubtle: string;
+  onLagoonSubtle: string;
 };
 
 export type Theme = {
   scheme: ColorScheme;
   colors: ThemeColors;
+  /** Per-family accent, for the PDF catalogue. */
+  categories: Record<'Edit' | 'Optimise' | 'Secure' | 'Convert', CategoryTone>;
   space: typeof space;
   radius: typeof radius;
   typography: typeof typography;
@@ -116,6 +147,26 @@ const lightColors: ThemeColors = {
 
   scrim: 'rgba(18, 17, 14, 0.45)',
   focusRing: 'rgba(14, 111, 107, 0.45)',
+
+  accentWash: peacock[50],
+  brassWash: brass[100],
+  borderStrong: parchment[400],
+
+  sage: sage[600],
+  sageSubtle: sage[100],
+  onSageSubtle: sage[900],
+
+  plum: plum[600],
+  plumSubtle: plum[100],
+  onPlumSubtle: plum[900],
+
+  clay: clay[600],
+  claySubtle: clay[100],
+  onClaySubtle: clay[900],
+
+  lagoon: lagoon[600],
+  lagoonSubtle: lagoon[100],
+  onLagoonSubtle: lagoon[900],
 };
 
 const darkColors: ThemeColors = {
@@ -153,6 +204,50 @@ const darkColors: ThemeColors = {
 
   scrim: 'rgba(0, 0, 0, 0.6)',
   focusRing: 'rgba(127, 199, 193, 0.5)',
+
+  accentWash: '#0B2A29',
+  brassWash: '#2B2314',
+  borderStrong: ink[500],
+
+  sage: sage[300],
+  sageSubtle: '#0F2B1F',
+  onSageSubtle: sage[200],
+
+  plum: plum[300],
+  plumSubtle: '#241A2F',
+  onPlumSubtle: plum[200],
+
+  clay: clay[300],
+  claySubtle: '#2E1E15',
+  onClaySubtle: clay[200],
+
+  lagoon: lagoon[300],
+  lagoonSubtle: '#0D2833',
+  onLagoonSubtle: lagoon[200],
+};
+
+/** The four PDF families, each with a hue that means something. */
+export type CategoryTone = {
+  /** Text and icon colour. */
+  ink: string;
+  /** Tinted well behind an icon or a chip. */
+  wash: string;
+  /** Edge of that well, for tiles that need definition. */
+  edge: string;
+};
+
+const lightCategories: Record<'Edit' | 'Optimise' | 'Secure' | 'Convert', CategoryTone> = {
+  Edit: { ink: peacock[600], wash: peacock[50], edge: peacock[200] },
+  Optimise: { ink: sage[600], wash: sage[50], edge: sage[200] },
+  Secure: { ink: plum[600], wash: plum[50], edge: plum[200] },
+  Convert: { ink: clay[600], wash: clay[50], edge: clay[200] },
+};
+
+const darkCategories: Record<'Edit' | 'Optimise' | 'Secure' | 'Convert', CategoryTone> = {
+  Edit: { ink: peacock[300], wash: '#0B2A29', edge: peacock[800] },
+  Optimise: { ink: sage[300], wash: '#0F2B1F', edge: sage[800] },
+  Secure: { ink: plum[300], wash: '#241A2F', edge: plum[800] },
+  Convert: { ink: clay[300], wash: '#2E1E15', edge: clay[800] },
 };
 
 const shared = {
@@ -168,6 +263,7 @@ export const themes: Record<ColorScheme, Theme> = {
   light: {
     scheme: 'light',
     colors: lightColors,
+    categories: lightCategories,
     ...shared,
     elevation: {
       raised: {
@@ -189,6 +285,7 @@ export const themes: Record<ColorScheme, Theme> = {
   dark: {
     scheme: 'dark',
     colors: darkColors,
+    categories: darkCategories,
     ...shared,
     elevation: {
       raised: {

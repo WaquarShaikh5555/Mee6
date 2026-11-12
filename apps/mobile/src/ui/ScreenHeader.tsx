@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, View, type ViewStyle } from 'react-native';
+import { Animated, Pressable, View, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { usePressScale } from './motion';
 import { Text } from './Text';
 
 type ScreenHeaderProps = {
@@ -17,6 +18,7 @@ type ScreenHeaderProps = {
 export function ScreenHeader({ title, subtitle, back = true, right, style }: ScreenHeaderProps) {
   const theme = useTheme();
   const router = useRouter();
+  const backPress = usePressScale(0.9);
 
   return (
     <View
@@ -32,23 +34,26 @@ export function ScreenHeader({ title, subtitle, back = true, right, style }: Scr
       ]}
     >
       {back ? (
-        <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          hitSlop={theme.space.md}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: theme.radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginLeft: -theme.space.sm,
-            backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent',
-          })}
-        >
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
-        </Pressable>
+        <Animated.View style={[{ marginLeft: -theme.space.sm }, backPress.scaleStyle]}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            onPressIn={backPress.onPressIn}
+            onPressOut={backPress.onPressOut}
+            hitSlop={theme.space.md}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: theme.radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent',
+            })}
+          >
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+          </Pressable>
+        </Animated.View>
       ) : null}
 
       <View style={{ flex: 1 }}>
