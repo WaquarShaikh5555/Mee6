@@ -60,6 +60,85 @@ export const brass = {
   700: '#6C4C1F',
 } as const;
 
+/**
+ * Sage — the green that sits beside peacock without competing with it.
+ *
+ * Used for "this is done / this is healthy" surfaces and for the Optimise
+ * family of tools. Muted enough to read as a paper ink, not a status light.
+ */
+export const sage = {
+  50: '#EEF6F1',
+  100: '#DCEBE2',
+  200: '#BBD8C7',
+  300: '#8FBF9F',
+  400: '#5FA377',
+  500: '#3F855C',
+  600: '#2C7A56',
+  700: '#235F44',
+  800: '#1B4A35',
+  900: '#143728',
+} as const;
+
+/**
+ * Clay — warm, dusty terracotta.
+ *
+ * The counterweight to peacock: it keeps the app from reading as a single cool
+ * hue, and it is the only family that pairs naturally with parchment without
+ * tipping into "cream and rust". Reserved for Convert and for attention that is
+ * not an error.
+ */
+export const clay = {
+  50: '#FAF1EC',
+  100: '#F4E2D7',
+  200: '#E8C7B4',
+  300: '#D7A588',
+  400: '#C08159',
+  500: '#A6673E',
+  600: '#8A5330',
+  700: '#6E4227',
+  800: '#553321',
+  900: '#3D2519',
+} as const;
+
+/**
+ * Plum — a quiet violet.
+ *
+ * Anything about locking, privacy and secrets reads in plum rather than in
+ * danger red: a padlock is not a warning. Also the Secure family.
+ */
+export const plum = {
+  50: '#F4EFF7',
+  100: '#E7DDEE',
+  200: '#CFBDDF',
+  300: '#B096C9',
+  400: '#8E6FB0',
+  500: '#735396',
+  600: '#5C427A',
+  700: '#493462',
+  800: '#37274B',
+  900: '#271C35',
+} as const;
+
+/**
+ * Lagoon — peacock's cooler sibling.
+ *
+ * Used for information and for anything that is being watched in the
+ * background (Focus Mode's service state). Close enough to peacock to belong,
+ * distinct enough that the two never look like a mistake.
+ */
+export const lagoon = {
+  50: '#EAF6FA',
+  100: '#D2EBF3',
+  200: '#A6D6E5',
+  300: '#6FB9D1',
+  400: '#3F99B5',
+  500: '#2A7D99',
+  600: '#1F657E',
+  700: '#185064',
+  800: '#123D4C',
+  900: '#0C2C37',
+} as const;
+
 /** Ink — the dark-mode surface family, subtly teal-tinted so it sits with peacock. */
 export const ink = {
   0: '#0A0F0F',
@@ -167,8 +246,26 @@ export const radius = {
 /** Minimum touch target, per platform convention (44pt iOS, 48dp Android). */
 export const touchTarget = Platform.select({ ios: 44, default: 48 }) as number;
 
-/** Motion. One easing curve keeps the app feeling like one product. */
+/**
+ * Motion. One curve keeps the app feeling like one product.
+ *
+ * `durations` are derived from how far something travels, not from how much we
+ * like the number: a press is instant, a card is a beat, a sheet is a breath.
+ * Springs carry the presses, because a spring that overshoots by 2% is what
+ * "feels alive" actually means.
+ */
 export const motion = {
-  duration: { fast: 140, base: 200, slow: 320 },
-  easing: { standard: [0.2, 0, 0, 1] as const, exit: [0.4, 0, 1, 1] as const },
+  duration: { instant: 90, fast: 160, base: 240, slow: 360, entrance: 460 },
+  easing: {
+    standard: [0.2, 0, 0, 1] as const,
+    exit: [0.4, 0, 1, 1] as const,
+    /** A slight overshoot, for anything that lands. */
+    emphasis: [0.16, 1.02, 0.3, 1] as const,
+  },
+  spring: {
+    /** Button and card presses: quick, barely visible, always felt. */
+    press: { damping: 18, stiffness: 320, mass: 0.6 },
+    /** Sheets and cards arriving. */
+    settle: { damping: 16, stiffness: 180, mass: 0.9 },
+  },
 } as const;

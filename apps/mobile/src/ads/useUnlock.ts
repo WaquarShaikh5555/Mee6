@@ -18,6 +18,7 @@ import {
   type Entitlement,
 } from './entitlement';
 import { adsAvailable, showRewarded, type WatchReason, type WatchResult } from './rewarded';
+import { serverProUntil } from './serverPro';
 
 /** Long enough for a slow connection, short enough that nobody waits forever. */
 const WATCH_TIMEOUT_MS = 20_000;
@@ -50,11 +51,18 @@ function snapshot(): Snapshot {
   // A gate with no way through it would be worse than no gate.
   const free = !adsAvailable();
 
+  // Pro granted from the owner console. This is server truth, refreshed on
+  // sign-in and revoked the moment the session ends, so it takes precedence
+  // over nothing and is simply another way the window can be open.
+  const granted = serverProUntil();
+  const ownerPro = granted !== null && granted > now;
+  const until = live?.until ?? (ownerPro ? granted : null);
+
   return {
     loading: !ready,
-    until: live?.until ?? null,
-    unlocked: live !== null || free,
-    left: live ? describeTimeLeft(live.until, now) : null,
+    until,
+    unlocked: until !== null || free,
+    left: until !== null ? describeTimeLeft(until, now) : null,
   };
 }
 

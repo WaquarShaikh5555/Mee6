@@ -10,6 +10,7 @@ import {
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { FadeIn } from './motion';
 
 type ScreenProps = {
   children: ReactNode;
@@ -48,6 +49,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={[gutterStyle, { paddingBottom: theme.space['2xl'] }, contentStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
@@ -67,7 +69,9 @@ export function Screen({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {body}
+        <FadeIn style={{ flex: 1 }} offset={6}>
+          {body}
+        </FadeIn>
         {footer ? (
           <View
             style={[

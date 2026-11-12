@@ -11,11 +11,19 @@ type Tone =
   | 'inverse'
   | 'accent'
   | 'brass'
+  | 'sage'
+  | 'plum'
+  | 'clay'
+  | 'lagoon'
   | 'success'
   | 'warning'
   | 'danger'
   | 'onAccent'
-  | 'onAccentSubtle';
+  | 'onAccentSubtle'
+  | 'onSageSubtle'
+  | 'onPlumSubtle'
+  | 'onClaySubtle'
+  | 'onLagoonSubtle';
 
 export type TextProps = Omit<RNTextProps, 'style'> & {
   children?: ReactNode;
@@ -49,11 +57,19 @@ export function Text({
     inverse: theme.colors.textInverse,
     accent: theme.colors.accent,
     brass: theme.colors.brass,
+    sage: theme.colors.sage,
+    plum: theme.colors.plum,
+    clay: theme.colors.clay,
+    lagoon: theme.colors.lagoon,
     success: theme.colors.success,
     warning: theme.colors.warning,
     danger: theme.colors.danger,
     onAccent: theme.colors.onAccent,
     onAccentSubtle: theme.colors.onAccentSubtle,
+    onSageSubtle: theme.colors.onSageSubtle,
+    onPlumSubtle: theme.colors.onPlumSubtle,
+    onClaySubtle: theme.colors.onClaySubtle,
+    onLagoonSubtle: theme.colors.onLagoonSubtle,
   };
 
   const token = theme.typography[variant];

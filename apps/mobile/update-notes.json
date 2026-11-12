@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.14.0": [
+    "An owner console, in the app: every account, Pro access, pausing someone, and a record of every change.",
+    "Every button answers on the first touch now — spring presses, content that arrives, segments that slide.",
+    "Four new colours — sage, plum, clay and lagoon — so the app is no longer just teal and beige."
+  ],
   "0.13.3": [
     "The ad button can no longer get stuck: after 20 seconds the tools open anyway.",
     "Owner screen: a reset for the 48-hour unlock, so the ad card can be tested again.",

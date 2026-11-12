@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
 import {
+  Animated,
   Pressable,
+  StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { usePressScale } from './motion';
 
 export type CardProps = {
   children: ReactNode;
@@ -27,6 +30,7 @@ export function Card({
   accessibilityLabel,
 }: CardProps) {
   const theme = useTheme();
+  const press = usePressScale(0.988, !onPress);
 
   const base: ViewStyle = {
     backgroundColor: theme.colors.surface,
@@ -42,17 +46,37 @@ export function Card({
   }
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        base,
-        { transform: [{ scale: pressed ? 0.99 : 1 }], opacity: pressed ? 0.9 : 1 },
-        style,
-      ]}
-    >
-      {children}
-    </Pressable>
+    <Animated.View style={[press.scaleStyle, { borderRadius: base.borderRadius }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        style={[base, style]}
+      >
+        {({ pressed }) => (
+          <>
+            {/* The wash sits *under* the content, so a pressed card dims its
+                surface without dimming its type. Works on tinted cards too,
+                which a background swap could not do. */}
+            {pressed ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: theme.colors.surfaceSunken,
+                    opacity: 0.55,
+                    borderRadius: base.borderRadius,
+                  },
+                ]}
+              />
+            ) : null}
+            {children}
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }

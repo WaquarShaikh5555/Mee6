@@ -93,6 +93,13 @@ export default function SettingsScreen() {
           <Text variant="title3">Owner</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
             <ListRow
+              title="People"
+              subtitle="Accounts, Pro access, and pausing someone"
+              icon="people-outline"
+              onPress={() => router.push('/people')}
+            />
+            <Divider inset={ROW_INSET} />
+            <ListRow
               title="Developer options"
               subtitle="Diagnostics, what Focus Mode sees, and shared tools"
               icon="construct-outline"

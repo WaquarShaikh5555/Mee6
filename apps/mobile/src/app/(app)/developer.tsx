@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share, View } from 'react-native';
 
@@ -30,6 +31,7 @@ import { useTheme } from '@/theme/ThemeProvider';
  */
 export default function DeveloperScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { user } = useAuth();
   const { state, enabled, blockedSectionCount, todayCount, resetRules } = useFocus();
 
@@ -106,8 +108,13 @@ export default function DeveloperScreen() {
           <Badge label="Admin" tone="brass" />
         </View>
         <Text variant="footnote" tone="secondary">
-          Granted by the database, not by the app. Nobody can promote themselves here.
+          Owner access is granted by the database, never by the app. Account changes happen on the
+          People screen, and every one of them is recorded.
         </Text>
+      </View>
+
+      <View style={{ paddingBottom: theme.space.lg }}>
+        <Button label="Open People" onPress={() => router.push('/people')} />
       </View>
 
       <Card style={{ gap: theme.space.sm }}>
@@ -232,8 +239,8 @@ export default function DeveloperScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
           <Ionicons name="information-circle-outline" size={16} color={theme.colors.textTertiary} />
           <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
-            Adding another owner is a database change, deliberately: there is no in-app path that
-            could be abused to grant it.
+            Adding another owner, granting Pro and pausing an account all live on the People
+            screen. The database checks who is asking before it changes anything.
           </Text>
         </View>
       </View>

@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { recordVisit } from '@/admin/service';
+import { setServerProUntil } from '@/ads/serverPro';
 import { demoAuthService, signInWithDemoAccount } from './demoAuthService';
 import { httpAuthService, isApiConfigured } from './httpAuthService';
 import { isSupabaseConfigured } from './supabaseClient';
@@ -35,6 +37,10 @@ const service: AuthService = isSupabaseConfigured()
     : demoAuthService;
 
 export type AuthStatus = 'restoring' | 'signedOut' | 'signedIn';
+
+/** Shown when the server says an owner has paused the account. */
+const BLOCKED_MESSAGE =
+  'This account is paused. If that is unexpected, ask the owner to restore it.';
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -66,10 +72,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     service
       .restore()
-      .then((restored) => {
+      .then(async (restored) => {
         if (cancelled) return;
+
+        // A paused account must not get a half-session: sign it out and say
+        // why. `blocked` comes from the database, so it cannot be edited away
+        // on the device.
+        if (restored?.user.blocked) {
+          await service.signOut().catch(() => undefined);
+          if (cancelled) return;
+          setServerProUntil(null);
+          setSession(null);
+          setStatus('signedOut');
+          setError(BLOCKED_MESSAGE);
+          return;
+        }
+
+        setServerProUntil(restored?.user.proUntil ?? null);
         setSession(restored);
         setStatus(restored ? 'signedIn' : 'signedOut');
+
+        if (restored) recordVisit();
       })
       .catch(() => {
         if (!cancelled) setStatus('signedOut');
@@ -85,8 +108,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         const next = await action();
+
+        if (next.user.blocked) {
+          await service.signOut().catch(() => undefined);
+          setServerProUntil(null);
+          setSession(null);
+          setStatus('signedOut');
+          setError(BLOCKED_MESSAGE);
+          return false;
+        }
+
+        setServerProUntil(next.user.proUntil ?? null);
         setSession(next);
         setStatus('signedIn');
+        recordVisit();
         return true;
       } catch (caught) {
         setError(
@@ -122,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await service.signOut();
     } finally {
+      setServerProUntil(null);
       setSession(null);
       setStatus('signedOut');
       setError(null);
