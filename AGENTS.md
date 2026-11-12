@@ -1,8 +1,9 @@
-# Agent guide — mobile application engineering
+# Agent guide
 
-This repository is a **skill library**, not an application. It equips a coding agent to build
-production-grade Android and iOS apps with React Native/Expo, Flutter, native Kotlin/Compose,
-or native Swift/SwiftUI.
+This repository ships **Shaikh's**, an Android app (`apps/mobile`), and carries the
+**mobile-engineering skill library** that was used to build it. Before touching the app, read
+[docs/ENGINEERING.md](docs/ENGINEERING.md): it states the conventions, the two build rules that
+have already caused a shipped crash when broken, and where the backend authority lives.
 
 - **Catalog:** [SKILLS.md](SKILLS.md) — all 115 skills with purpose and upstream source.
 - **Files:** `skills/<name>/SKILL.md` (plus `references/`, `templates/`, `scripts/` where the
