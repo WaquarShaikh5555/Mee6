@@ -217,7 +217,7 @@ jobs:
           # Nothing may be debuggable, cleartext traffic must stay off, and the
           # local backup of app data is disabled (the only secret on disk is the
           # session, which is Keystore-backed and excluded anyway).
-          if grep -Eq "debuggable.*0x1" /tmp/manifest.txt; then
+          if grep -Eq "debuggable.*=\(type 0x12\)0x1" /tmp/manifest.txt; then
             echo "the release manifest is debuggable" >&2
             exit 1
           fi
@@ -229,7 +229,7 @@ jobs:
             echo "allowBackup is missing from the manifest" >&2
             exit 1
           fi
-          if grep -Eq "allowBackup.*0x1" /tmp/manifest.txt; then
+          if grep -Eq "allowBackup.*=\(type 0x12\)0x1" /tmp/manifest.txt; then
             echo "allowBackup is on — app data would be copied off the phone" >&2
             exit 1
           fi
