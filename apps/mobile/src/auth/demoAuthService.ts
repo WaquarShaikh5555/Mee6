@@ -130,6 +130,17 @@ export const demoAuthService: AuthService = {
     await settle(undefined, 600);
   },
 
+  async deleteAccount(): Promise<void> {
+    // Demo accounts live in this device's storage; deleting one is the same
+    // thing as deleting the record and the session around it.
+    const session = await readSession();
+    if (session) {
+      const accounts = await readAccounts();
+      await writeAccounts(accounts.filter((account) => account.id !== session.user.id));
+    }
+    await clearSession();
+  },
+
   async resetPassword(_input: ResetPasswordInput): Promise<void> {
     // There is no token store offline, so a link cannot be honoured here.
     throw new AuthError('invalid-token', 'Reset links only work with a connected account.');

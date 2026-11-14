@@ -245,6 +245,36 @@ export const supabaseAuthService: AuthService = {
     };
   },
 
+  async deleteAccount(): Promise<void> {
+    const client = getSupabaseClient();
+
+    // A SECURITY DEFINER function with no parameters, so the only row it can
+    // delete is the one belonging to auth.uid(). The profile row cascades.
+    const { error } = await client.rpc('delete_my_account');
+
+    if (error) {
+      if (/not_signed_in/i.test(error.message ?? '')) {
+        throw new AuthError('unknown', 'You are already signed out. Sign in and try again.');
+      }
+      if (/no_such_account/i.test(error.message ?? '')) {
+        // Deleted elsewhere — the outcome the person asked for.
+        await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        return;
+      }
+      // Not an auth error: this is a database function refusing or failing.
+      throw new AuthError(
+        'unknown',
+        /network|fetch/i.test(error.message ?? '')
+          ? 'Cannot reach the server. Check your connection and try again.'
+          : 'The account could not be deleted. Nothing was removed — try again.',
+      );
+    }
+
+    // The token now belongs to an account that no longer exists; remove it
+    // from this device instead of leaving a session that fails every request.
+    await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
+  },
+
   async requestPasswordReset(email: string): Promise<void> {
     const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
       email.trim().toLowerCase(),

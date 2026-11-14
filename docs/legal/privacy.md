@@ -2,7 +2,7 @@
 
 What Shaikh’s keeps, where it goes, and the parts that never leave your phone.
 
-*Last updated 31 October 2026.*
+*Last updated 12 November 2026.*
 
 *Focus Mode was called Regain before version 0.11.0. The name changed; what the feature does, and what it can see, did not.*
 
@@ -10,7 +10,7 @@ What Shaikh’s keeps, where it goes, and the parts that never leave your phone.
 
 Shaikh’s has an account, because you asked for one that works across devices. Everything Focus Mode does stays on your phone.
 
-There are no analytics, no advertising, no trackers, and no third-party SDKs watching what you do. Nothing you look at inside Instagram, YouTube, Snapchat or the others is ever read, stored, or sent anywhere.
+There are no analytics and no trackers. There is one ad service, Google AdMob, and it appears in exactly one place: PDF Arena, when a Pro tool is opened without an active 48-hour unlock. It is non-personalised, and it is never shown in Focus Mode or anywhere else. Nothing you look at inside Instagram, YouTube, Snapchat or the others is ever read, stored, or sent anywhere.
 
 ## What we hold
 
@@ -47,12 +47,14 @@ Android does not offer any other way for one app to know what another app is sho
 
 Accounts and the profile row are hosted by Supabase, which provides the database and the sign-in service. Your email and account data are processed on their infrastructure, currently in the Asia-Pacific region, under their security and privacy terms.
 
-There is no other processor. The app talks to exactly one service, and only for signing in, updating your name, and changing your password.
+One more company is involved, and only in PDF Arena: Google’s AdMob serves the optional rewarded ad that opens the Pro tools for 48 hours. Like any ad request, it receives the IP address and basic device information, and Google learns that an ad was requested and whether it was completed. The app asks for non-personalised ads only, so no advertising identifier is used to profile you and no consent banner is needed in the EU or UK. Focus Mode never makes an ad request, and watching an ad is never required to use the app — if an ad cannot be shown, the tools open anyway.
+
+If you never open a Pro tool, the ad SDK is never started.
 
 ## What we never do
 
 - Sell, rent, or share your data with anyone.
-- Show advertising or use advertising identifiers.
+- Show a banner, an interstitial, or any ad outside PDF Arena, or use advertising identifiers to profile you.
 - Track you across other apps or websites.
 - Read your messages, or the content of anything you look at.
 - Send your data to a third party for analytics or profiling.

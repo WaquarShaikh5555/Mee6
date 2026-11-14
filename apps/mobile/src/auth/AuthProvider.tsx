@@ -11,7 +11,6 @@ import {
 import { recordVisit } from '@/admin/service';
 import { setServerProUntil } from '@/ads/serverPro';
 import { demoAuthService, signInWithDemoAccount } from './demoAuthService';
-import { httpAuthService, isApiConfigured } from './httpAuthService';
 import { isSupabaseConfigured } from './supabaseClient';
 import { supabaseAuthService } from './supabaseAuthService';
 import {
@@ -26,15 +25,11 @@ import {
  * The single seam between the app and the identity provider.
  *
  * Supabase (the database and account system) is used whenever its two
- * environment variables are present. The Fastify API is the fallback for
- * deployments that host their own server, and the on-device demo service keeps
- * every screen usable when neither is configured.
+ * environment variables are present; the on-device demo service keeps every
+ * screen usable when they are not. There is deliberately no third option: an
+ * unused second backend is a second set of rules to keep correct.
  */
-const service: AuthService = isSupabaseConfigured()
-  ? supabaseAuthService
-  : isApiConfigured()
-    ? httpAuthService
-    : demoAuthService;
+const service: AuthService = isSupabaseConfigured() ? supabaseAuthService : demoAuthService;
 
 export type AuthStatus = 'restoring' | 'signedOut' | 'signedIn';
 
@@ -57,6 +52,11 @@ type AuthContextValue = {
   requestPasswordReset: (email: string) => Promise<boolean>;
   /** Returns false when the token is invalid/expired or the password is rejected. */
   resetPassword: (token: string, password: string) => Promise<boolean>;
+  /**
+   * Deletes the signed-in account. Resolves true only when the server confirmed
+   * it; the session is always cleared afterwards.
+   */
+  deleteAccount: () => Promise<boolean>;
   clearError: () => void;
 };
 
@@ -202,6 +202,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await service.deleteAccount();
+      setServerProUntil(null);
+      setSession(null);
+      setStatus('signedOut');
+      return true;
+    } catch (caught) {
+      setError(
+        caught instanceof AuthError
+          ? caught.message
+          : 'The account could not be deleted. Nothing was removed — try again.',
+      );
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
+
   const clearError = useCallback(() => setError(null), []);
 
   const value = useMemo<AuthContextValue>(
@@ -218,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       requestPasswordReset,
       resetPassword,
+      deleteAccount,
       clearError,
     }),
     [
@@ -231,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       requestPasswordReset,
       resetPassword,
+      deleteAccount,
       clearError,
     ],
   );

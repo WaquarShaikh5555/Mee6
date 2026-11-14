@@ -23,6 +23,8 @@ export default function AppLayout() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="developer" />
       <Stack.Screen name="people" />
+      {/* A deliberate destination, not a page you can brush past: no swipe-back. */}
+      <Stack.Screen name="delete-account" options={{ gestureEnabled: false }} />
       <Stack.Screen name="pdf/index" />
       <Stack.Screen name="pdf/[toolId]" />
       {/* A viewer is a place you enter and leave, not a page in the stack. */}

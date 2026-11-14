@@ -2,7 +2,7 @@
   "expo": {
     "name": "Shaikh's",
     "slug": "shaikhs",
-    "version": "0.14.0",
+    "version": "0.15.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "shaikhs",
@@ -22,7 +22,12 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "allowBackup": false
     },
     "web": {
       "output": "static",

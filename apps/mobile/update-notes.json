@@ -1,5 +1,10 @@
 {
   "_comment": "What the in-app update prompt says, keyed by version. Keep each list to three short lines: this is read on a phone, standing up.",
+  "0.15.0": [
+    "Delete your account, inside the app: Settings, Account, and the account is gone — with what it kept spelled out first.",
+    "The privacy page now names Google's ad SDK, what it receives, and what is never collected.",
+    "Hardening under the surface: the update download only accepts https, and the release build refuses to ship recording or overlay permissions."
+  ],
   "0.14.0": [
     "An owner console, in the app: every account, Pro access, pausing someone, and a record of every change.",
     "Every button answers on the first touch now — spring presses, content that arrives, segments that slide.",

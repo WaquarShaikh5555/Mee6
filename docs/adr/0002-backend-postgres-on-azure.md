@@ -1,6 +1,8 @@
 # ADR 0002 — Backend: PostgreSQL, an owned API, and Azure Container Apps
 
-- **Status:** accepted
+- **Status:** superseded — Azure was not used; the live backend is Supabase
+  (see [docs/ENGINEERING.md](../ENGINEERING.md)). Kept as the record of the options
+  that were weighed.
 - **Date:** 2026-10-20
 - **Deciders:** product owner, engineering
 - **Supersedes:** nothing. Extends [ADR 0001](0001-stack-and-design-direction.md), which left
@@ -83,8 +85,10 @@ become the owner's job).
 
 ## Decision 4 — Identity stays behind the existing interface
 
-**Chosen:** `httpAuthService` implements the existing `AuthService`; the app picks it when
-`EXPO_PUBLIC_API_URL` is set, and otherwise falls back to the demo service.
+**Chosen (at the time):** `httpAuthService` implemented the existing `AuthService`; the app
+picked it when `EXPO_PUBLIC_API_URL` was set, and otherwise fell back to the demo service.
+That file was removed when account deletion shipped, so the app is now Supabase-or-demo
+with no second switch.
 
 **Because:** the screens never knew about a provider, so replacing one was a one-line change plus
 a new file. The demo service stays useful for design work without a running backend.

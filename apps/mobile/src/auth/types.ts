@@ -81,4 +81,12 @@ export interface AuthService {
   requestPasswordReset(email: string): Promise<void>;
   /** Consumes a reset token and sets a new password. Revokes every existing session. */
   resetPassword(input: ResetPasswordInput): Promise<void>;
+  /**
+   * Deletes the signed-in account and everything that belongs to it.
+   *
+   * No identifier is passed: an implementation may only ever delete the
+   * account the current session belongs to, which is what stops this from
+   * becoming a way to delete somebody else's.
+   */
+  deleteAccount(): Promise<void>;
 }
