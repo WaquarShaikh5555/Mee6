@@ -59,9 +59,11 @@ everywhere in the app.
 
 ## Backend
 
-Supabase owns accounts, sessions, profiles and the owner functions. Migrations `0001_profiles`
-and `0002_admin` are applied to the live project; any further change must be a new file in
-`supabase/migrations` and applied through the Supabase tooling, not hand-edited in the dashboard.
+Supabase owns accounts, sessions, profiles and the owner functions. Migrations `0001_profiles`,
+`0002_admin` and `0003_delete_account` are applied to the live project; any further change must be
+a new file in `supabase/migrations` and applied through the Supabase tooling, not hand-edited in
+the dashboard. Account deletion is a `security definer` function: the app can remove its own
+account and nothing else's, and the profile goes with it by cascade.
 The publishable/anon key is safe to ship (RLS enforces everything); a `service_role` key must
 never enter the repo, a screenshot, or a message.
 

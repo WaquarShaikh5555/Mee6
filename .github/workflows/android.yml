@@ -201,6 +201,39 @@ jobs:
           fi
           grep -q "com.google.android.gms.ads.APPLICATION_ID" /tmp/manifest.txt
           echo "ads SDK present, startup provider removed, app id set"
+
+          # Permissions that do not belong to this app must stay out of the
+          # package, not merely out of a screen. Both were pulled in by the
+          # template and neither is used: the app records no audio and never
+          # draws over another app.
+          for permission in RECORD_AUDIO SYSTEM_ALERT_WINDOW; do
+            if grep -q "$permission" /tmp/manifest.txt; then
+              echo "$permission must not be requested — block it in app.json" >&2
+              exit 1
+            fi
+          done
+          echo "no audio-recording or overlay permission in the package"
+
+          # Nothing may be debuggable, cleartext traffic must stay off, and the
+          # local backup of app data is disabled (the only secret on disk is the
+          # session, which is Keystore-backed and excluded anyway).
+          if grep -Eq "debuggable.*0x1" /tmp/manifest.txt; then
+            echo "the release manifest is debuggable" >&2
+            exit 1
+          fi
+          if grep -q "usesCleartextTraffic" /tmp/manifest.txt; then
+            echo "cleartext traffic is configured in the manifest" >&2
+            exit 1
+          fi
+          if ! grep -q "allowBackup" /tmp/manifest.txt; then
+            echo "allowBackup is missing from the manifest" >&2
+            exit 1
+          fi
+          if grep -Eq "allowBackup.*0x1" /tmp/manifest.txt; then
+            echo "allowBackup is on — app data would be copied off the phone" >&2
+            exit 1
+          fi
+          echo "release manifest: not debuggable, no cleartext, backup off"
           for app in com.instagram.android com.google.android.youtube com.snapchat.android; do
             grep -q "$app" /tmp/manifest.txt
           done

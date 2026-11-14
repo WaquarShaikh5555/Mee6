@@ -23,6 +23,8 @@ jest.mock('@/lib/storage', () => ({
   },
 }));
 
+const mockRpc = jest.fn();
+
 const mockAuth = {
   signUp: jest.fn(),
   signInWithPassword: jest.fn(),
@@ -37,7 +39,7 @@ const mockAuth = {
 
 jest.mock('@/auth/supabaseClient', () => ({
   isSupabaseConfigured: () => true,
-  getSupabaseClient: () => ({ auth: mockAuth }),
+  getSupabaseClient: () => ({ auth: mockAuth, rpc: mockRpc }),
   resetSupabaseClient: () => undefined,
   supabaseUrl: () => 'https://project.supabase.co',
   supabaseAnonKey: () => 'publishable-key',
@@ -207,6 +209,33 @@ describe('restore', () => {
 
     const restored = await supabaseAuthService.restore();
     expect(restored?.user.displayName).toBe('waquar');
+  });
+});
+
+describe('deleteAccount', () => {
+  it('calls the parameterless function and then drops the local session', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await supabaseAuthService.deleteAccount();
+
+    // No argument that could name somebody else's account.
+    expect(mockRpc).toHaveBeenCalledWith('delete_my_account');
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('treats a missing row as already deleted', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'no_such_account' } });
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await expect(supabaseAuthService.deleteAccount()).resolves.toBeUndefined();
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('never claims success when the server refused', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'not_signed_in' } });
+
+    await expect(supabaseAuthService.deleteAccount()).rejects.toBeInstanceOf(AuthError);
   });
 });
 

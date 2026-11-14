@@ -60,6 +60,15 @@ class UpdaterModule : Module() {
      * no checksum; the download still works, it is simply not proof-checked.
      */
     AsyncFunction("download") { url: String, name: String, expected: String? ->
+      // The JavaScript side already refuses anything but https, and this is the
+      // second lock on the same door: an update that arrives over plain http can
+      // be replaced in transit, and the signature check happens *after* the
+      // bytes are already on the phone. Never download from a URL we would not
+      // have typed ourselves.
+      if (!url.trim().startsWith("https://", ignoreCase = true)) {
+        throw IllegalStateException("Updates are only downloaded over a secure connection.")
+      }
+
       val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "-").ifBlank { "update.apk" }
       val target = File(downloadDir(), safe)
 

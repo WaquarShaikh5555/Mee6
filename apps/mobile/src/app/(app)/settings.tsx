@@ -110,6 +110,23 @@ export default function SettingsScreen() {
       ) : null}
 
       <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
+        <Text variant="title3">Account</Text>
+        <Card padded={false} style={{ overflow: 'hidden' }}>
+          <ListRow
+            title="Delete my account"
+            subtitle="Removes your email, your name and your profile. Permanent."
+            icon="trash-outline"
+            destructive
+            onPress={() => router.push('/delete-account')}
+          />
+        </Card>
+        <Text variant="caption" tone="tertiary">
+          Deletes the account immediately, from the phone. There is nothing to email and nobody to
+          wait for.
+        </Text>
+      </View>
+
+      <View style={{ gap: theme.space.sm, paddingTop: theme.space['2xl'] }}>
         <Text variant="title3">Legal</Text>
         <Card padded={false} style={{ overflow: 'hidden' }}>
           <ListRow
